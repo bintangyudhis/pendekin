@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+/* Hallmark · pre-emit critique: P4 H4 E4 S5 R4 V4 */
+/* Hallmark · macrostructure: Ledger · theme: Cap Pos · genre: utilitarian
+ * paper: light (#faf7f1) · display: grotesk-sans (Archivo, roman) ·
+ * accent: warm stamp-red (#bc3b1e) · nav: edge-aligned · footer: statement-line ·
+ * enrichment: none (typography only) · motion: none */
+
+@theme inline {
+  --color-paper: #faf7f1;
+  --color-ink: #1c1813;
+  --color-accent: #bc3b1e;
+  --color-line: #e4dccb;
+  --color-muted: #6f6656;
+  --font-sans: var(--font-archivo);
+  --font-mono: var(--font-plex-mono);
+}
+
+html,
+body {
+  /* Pagar anti melebar: halaman tidak boleh bisa digeser menyamping di HP. */
+  overflow-x: clip;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
