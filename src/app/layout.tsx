@@ -18,6 +18,7 @@ export const metadata: Metadata = {
   title: "Pendekin — Pemendek Tautan",
   description:
     "Pendekin mengubah tautan yang panjang menjadi tautan pendek yang mudah dibagikan, lengkap dengan statistik klik per tautan.",
+  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
