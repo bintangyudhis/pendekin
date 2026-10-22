@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// Tautan yang dipendekkan. `code` adalah slug pendek yang muncul di URL,
+/// mis. "x7K2qQ" untuk https://pendekin.bintangyudhis.my.id/x7K2qQ.
+model Link {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  url       String // tautan asli tujuan redirect
+  title     String? // label opsional untuk dikenali di dashboard
+  active    Boolean  @default(true) // false = dinonaktifkan, redirect berhenti
+  createdAt DateTime @default(now())
+  clicks    Click[]
+
+  @@index([createdAt])
+}
+
+/// Satu baris per kunjungan ke shortlink. Dasar statistik dashboard.
+model Click {
+  id        String   @id @default(cuid())
+  linkId    String
+  link      Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  clickedAt DateTime @default(now())
+  referer   String?
+  userAgent String?
+
+  @@index([linkId, clickedAt])
+}
