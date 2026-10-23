@@ -18,6 +18,26 @@ export default function PendekinForm() {
   const [keadaan, setKeadaan] = useState<Keadaan>("siap");
   const [galat, setGalat] = useState<string | null>(null);
   const [hasil, setHasil] = useState<string | null>(null);
+  const [tersalin, setTersalin] = useState(false);
+
+  /** Salin tautan pendek: Clipboard API, fallback ke textarea bila ditolak. */
+  async function salin() {
+    if (!hasil) return;
+    try {
+      await navigator.clipboard.writeText(hasil);
+    } catch {
+      const area = document.createElement("textarea");
+      area.value = hasil;
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand("copy");
+      document.body.removeChild(area);
+    }
+    setTersalin(true);
+    window.setTimeout(() => setTersalin(false), 2000);
+  }
 
   async function kirim(e: React.FormEvent) {
     e.preventDefault();
@@ -52,6 +72,7 @@ export default function PendekinForm() {
     setKode("");
     setHasil(null);
     setGalat(null);
+    setTersalin(false);
     setKeadaan("siap");
   }
 
@@ -142,6 +163,13 @@ export default function PendekinForm() {
             >
               {hasil.replace(/^https?:\/\//, "")}
             </a>
+            <button
+              type="button"
+              onClick={salin}
+              className="mt-4 border border-ink px-4 py-2 font-mono text-xs hover:bg-ink hover:text-paper"
+            >
+              {tersalin ? "tersalin" : "salin tautan"}
+            </button>
           </div>
         )}
       </form>
