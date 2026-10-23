@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { acakSlug, slugBolehDipakai } from "@/lib/slug";
 import { normalisasiUrl } from "@/lib/tautan";
 import { apiGalat, apiSukses, bacaJson } from "@/lib/api";
+import { cekLaju, ipKlien } from "@/lib/rate-limit";
 
 // Route handler yang membaca `request` selalu dinamis — tanpa perlu
 // `export const dynamic` (ditolak saat cacheComponents aktif).
@@ -17,6 +18,17 @@ const PESAN_KODE =
 
 export async function POST(request: Request) {
   try {
+    const laju = cekLaju(ipKlien(request));
+    if (!laju.boleh) {
+      const res = apiGalat(
+        "terlalu-sering",
+        "Terlalu banyak membuat tautan. Coba lagi nanti.",
+        429,
+      );
+      res.headers.set("Retry-After", String(laju.tungguDetik));
+      return res;
+    }
+
     const hasil = await bacaJson<BodyBuatTautan>(request);
     if ("galat" in hasil) {
       const status = hasil.galat === "terlalu-besar" ? 413 : 400;
