@@ -1,3 +1,5 @@
+import PendekinForm from "./PendekinForm";
+
 const REPO_URL = "https://github.com/bintangyudhis/pendekin";
 
 const caraKerja = [
@@ -80,6 +82,11 @@ export default function Home() {
               </a>
             </div>
           </div>
+        </section>
+
+        {/* Pendekkan: formulir langsung, tanpa daftar akun. */}
+        <section aria-label="Pendekkan tautan" className="pb-16 md:pb-20">
+          <PendekinForm />
         </section>
 
         {/* Spesimen: contoh hasil, diberi label jelas. */}
