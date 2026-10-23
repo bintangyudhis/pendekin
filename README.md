@@ -28,6 +28,46 @@ Stack: **Next.js 16** + **Tailwind CSS v4** + **React 19**, **Prisma 6** +
 Nama migrasi memakai prefiks `pendekin` (mis. `0001_pendekin_init`) agar tidak
 bentrok dengan repo lain yang berbagi database Supabase yang sama.
 
+## Endpoint API
+
+### `POST /api/links` — buat shortlink
+
+Body JSON:
+
+```json
+{
+  "url": "https://contoh.com/artikel/panjang",
+  "kode": "promo-okt",
+  "judul": "Promo Oktober"
+}
+```
+
+- `url` (wajib): tautan tujuan. Skema boleh ditulis tanpa `https://`.
+- `kode` (opsional): kode custom 3–32 karakter (huruf, angka, `-`, `_`).
+  Kosongkan untuk kode acak 7 karakter.
+- `judul` (opsional): label untuk dikenali di dasbor, maks. 120 karakter.
+
+Respons sukses `201`:
+
+```json
+{ "ok": true, "data": { "kode": "promo-okt", "url": "https://contoh.com/...", "judul": "Promo Oktober" } }
+```
+
+Kode galat: `url-tidak-valid` (422), `kode-tidak-valid` (422),
+`kode-dipakai` (409), `terlalu-sering` (429, maks. 20/jam per IP),
+`body-terlalu-besar` (413).
+
+Keamanan: URL ke host internal (localhost, IP privat, metadata cloud)
+ditolak, dan shortlink tidak boleh mengarah balik ke domain pendekin
+sendiri (anti redirect berputar).
+
+### `GET /:kode` — redirect + catat klik
+
+Mengalihkan ke tautan asli dengan status `308` (redirect tidak di-cache
+agar tiap kunjungan tercatat). Setiap kunjungan menyimpan satu baris
+`Click`: waktu, `referer`, dan `user-agent`. Kode tak dikenal atau tautan
+yang dinonaktifkan menampilkan halaman 404.
+
 ## Pengembangan lokal
 
 ```bash
