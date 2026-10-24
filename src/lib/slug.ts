@@ -16,7 +16,14 @@ export function slugCustomValid(kode: string): boolean {
 }
 
 /** Daftar kata yang tidak boleh dipakai sebagai kode (tabrakan dengan route). */
-const KODE_DILARANG = new Set(["api", "dashboard", "login", "404", "admin"]);
+const KODE_DILARANG = new Set([
+  "api",
+  "dashboard",
+  "dasbor",
+  "login",
+  "404",
+  "admin",
+]);
 
 export function slugBolehDipakai(kode: string): boolean {
   return slugCustomValid(kode) && !KODE_DILARANG.has(kode.toLowerCase());
