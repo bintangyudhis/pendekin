@@ -17,9 +17,14 @@ model Link {
   title     String? // label opsional untuk dikenali di dashboard
   active    Boolean  @default(true) // false = dinonaktifkan, redirect berhenti
   createdAt DateTime @default(now())
+  // IP pembuat, dicatat hanya untuk batas anti-banjir pembuatan tautan
+  // (dihitung dari database agar berlaku lintas instance serverless).
+  // Tidak pernah ditampilkan di dasbor/API. Baris lama bernilai null.
+  creatorIp String?
   clicks    Click[]
 
   @@index([createdAt])
+  @@index([creatorIp, createdAt])
 }
 
 /// Satu baris per kunjungan ke shortlink. Dasar statistik dashboard.
