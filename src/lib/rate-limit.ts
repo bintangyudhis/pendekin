@@ -1,10 +1,15 @@
 /**
- * Pembatas laju sederhana per IP untuk endpoint publik.
+ * Pembatas laju untuk endpoint publik — dua lapis:
  *
- * Disimpan di memori: cukup untuk satu instance server. Di serverless
- * (Vercel), tiap instance punya hitungannya sendiri dan memori direset saat
- * cold start — cukup sebagai rem darurat penyalahgunaan, bukan kuota ketat.
+ * 1. Pembuatan tautan (POST /api/links): dihitung dari DATABASE (baris
+ *    Link menurut createdAt + creatorIp), jadi berlaku konsisten lintas
+ *    instance serverless — lihat `cekBatasPembuatan`.
+ * 2. Mutasi dasbor (PATCH/DELETE): penghitung in-memory sederhana per
+ *    instance. Cukup sebagai rem darurat penyalahgunaan, bukan kuota
+ *    ketat — memori direset saat cold start.
  */
+
+import { prisma } from "@/lib/prisma";
 
 export type HasilLaju = {
   boleh: boolean;
@@ -38,8 +43,76 @@ function buatPemeriksaLaju(jendelaMs: number, maksPerJendela: number) {
   };
 }
 
-/** Pembuatan tautan: 20/jam per IP (dipakai POST /api/links). */
-export const cekLaju = buatPemeriksaLaju(60 * 60 * 1000, 20);
+export type HasilBatas = {
+  boleh: boolean;
+  /** Kode galat mesin bila ditolak. */
+  kode?: string;
+  /** Pesan ramah untuk pengguna bila ditolak. */
+  pesan?: string;
+  /** Detik saran menunggu (untuk header Retry-After) bila ditolak. */
+  tungguDetik: number;
+};
+
+const JAM_MS = 60 * 60 * 1000;
+const HARI_MS = 24 * JAM_MS;
+
+/** Kuota pembuatan tautan publik. */
+export const BATAS_IP_JAM = 10;
+export const BATAS_IP_HARI = 30;
+export const BATAS_GLOBAL_HARI = 300;
+
+/**
+ * Periksa kuota pembuatan tautan dari hitungan database:
+ * per IP maks 10 tautan/jam dan 30 tautan/24 jam, plus pemutus global
+ * 300 tautan baru/24 jam untuk seluruh situs — agar satu penyerang (atau
+ * banyak) tidak bisa membanjiri database sampai keberatan. Hanya tautan
+ * yang benar-benar terbuat yang dihitung; percobaan gagal tidak mengurangi
+ * kuota siapa pun.
+ */
+export async function cekBatasPembuatan(ip: string): Promise<HasilBatas> {
+  const sekarang = Date.now();
+  const sejakJam = new Date(sekarang - JAM_MS);
+  const sejakHari = new Date(sekarang - HARI_MS);
+
+  const [perIpJam, perIpHari, globalHari] = await Promise.all([
+    prisma.link.count({
+      where: { creatorIp: ip, createdAt: { gte: sejakJam } },
+    }),
+    prisma.link.count({
+      where: { creatorIp: ip, createdAt: { gte: sejakHari } },
+    }),
+    prisma.link.count({ where: { createdAt: { gte: sejakHari } } }),
+  ]);
+
+  if (perIpJam >= BATAS_IP_JAM) {
+    return {
+      boleh: false,
+      kode: "batas-ip-jam",
+      pesan:
+        "Kamu sudah membuat 10 tautan dalam sejam terakhir. Istirahat sebentar, lalu coba lagi ya.",
+      tungguDetik: 15 * 60,
+    };
+  }
+  if (perIpHari >= BATAS_IP_HARI) {
+    return {
+      boleh: false,
+      kode: "batas-ip-hari",
+      pesan:
+        "Batas harianmu tercapai: maksimal 30 tautan baru per hari. Coba lagi besok ya.",
+      tungguDetik: 60 * 60,
+    };
+  }
+  if (globalHari >= BATAS_GLOBAL_HARI) {
+    return {
+      boleh: false,
+      kode: "batas-global",
+      pesan:
+        "Pendekin sedang ramai sekali — kuota tautan baru hari ini sudah penuh. Coba lagi besok ya.",
+      tungguDetik: 60 * 60,
+    };
+  }
+  return { boleh: true, tungguDetik: 0 };
+}
 
 /**
  * Mutasi dasbor: 60/jam per IP (dipakai PATCH/DELETE /api/links/[kode]).

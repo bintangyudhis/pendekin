@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { acakSlug, slugBolehDipakai } from "@/lib/slug";
 import { normalisasiUrl } from "@/lib/tautan";
 import { apiGalat, apiSukses, bacaJson } from "@/lib/api";
-import { cekLaju, ipKlien } from "@/lib/rate-limit";
+import { cekBatasPembuatan, ipKlien } from "@/lib/rate-limit";
 
 // Route handler yang membaca `request` selalu dinamis — tanpa perlu
 // `export const dynamic` (ditolak saat cacheComponents aktif).
@@ -18,23 +18,28 @@ const PESAN_KODE =
 
 export async function POST(request: Request) {
   try {
-    const laju = cekLaju(ipKlien(request));
-    if (!laju.boleh) {
+    // Kuota pembuatan dihitung dari database (per IP + global) agar
+    // berlaku lintas instance serverless — bukan penghitung memori.
+    const ip = ipKlien(request);
+    const batas = await cekBatasPembuatan(ip);
+    if (!batas.boleh) {
       const res = apiGalat(
-        "terlalu-sering",
-        "Terlalu banyak membuat tautan. Coba lagi nanti.",
+        batas.kode ?? "terlalu-sering",
+        batas.pesan ?? "Terlalu banyak membuat tautan. Coba lagi nanti.",
         429,
       );
-      res.headers.set("Retry-After", String(laju.tungguDetik));
+      res.headers.set("Retry-After", String(batas.tungguDetik));
       return res;
     }
 
-    const hasil = await bacaJson<BodyBuatTautan>(request);
+    // Body dibatasi 4 KB: payload pembuatan tautan yang sah jauh di
+    // bawah itu, sisanya pasti sampah.
+    const hasil = await bacaJson<BodyBuatTautan>(request, 4 * 1024);
     if ("galat" in hasil) {
       const status = hasil.galat === "terlalu-besar" ? 413 : 400;
       const pesan =
         hasil.galat === "terlalu-besar"
-          ? "Body terlalu besar."
+          ? "Body terlalu besar (maks 4 KB)."
           : "Body harus berupa objek JSON.";
       return apiGalat(`body-${hasil.galat}`, pesan, status);
     }
@@ -82,7 +87,7 @@ export async function POST(request: Request) {
         : null;
 
     const link = await prisma.link.create({
-      data: { code: kode, url, title: judul },
+      data: { code: kode, url, title: judul, creatorIp: ip },
       select: { code: true, url: true, title: true, createdAt: true },
     });
 
