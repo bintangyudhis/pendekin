@@ -126,3 +126,32 @@ export async function PATCH(request: Request, { params }: ParamsKode) {
     );
   }
 }
+
+/**
+ * DELETE /api/links/[kode] — hapus tautan beserta seluruh riwayat kliknya
+ * (relasi Click memakai onDelete: Cascade).
+ */
+export async function DELETE(request: Request, { params }: ParamsKode) {
+  const { code } = await params;
+  const tidakValid = kodeAtauGalat(code);
+  if (tidakValid) return tidakValid;
+
+  const ditolak = tolakLaju(request);
+  if (ditolak) return ditolak;
+
+  try {
+    await prisma.link.delete({ where: { code } });
+    return apiSukses({ kode: code });
+  } catch (e) {
+    // P2025: delete mengenai baris yang tidak ada.
+    if ((e as { code?: string }).code === "P2025") {
+      return apiGalat("tidak-ditemukan", "Tautan tidak ditemukan.", 404);
+    }
+    console.error("DELETE /api/links/[kode] gagal:", e);
+    return apiGalat(
+      "galat-server",
+      "Terjadi galat di server. Coba lagi sebentar.",
+      500,
+    );
+  }
+}
