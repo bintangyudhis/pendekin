@@ -1,15 +1,10 @@
 /**
- * Pembatas laju sederhana per IP untuk endpoint publik (mis. POST /api/links).
+ * Pembatas laju sederhana per IP untuk endpoint publik.
  *
  * Disimpan di memori: cukup untuk satu instance server. Di serverless
  * (Vercel), tiap instance punya hitungannya sendiri dan memori direset saat
  * cold start — cukup sebagai rem darurat penyalahgunaan, bukan kuota ketat.
  */
-
-const JENDELA_MS = 60 * 60 * 1000; // 1 jam
-const MAKS_PER_JENDELA = 20;
-
-const catatan = new Map<string, number[]>();
 
 export type HasilLaju = {
   boleh: boolean;
@@ -17,27 +12,42 @@ export type HasilLaju = {
   tungguDetik: number;
 };
 
-/** Catat satu percobaan dari IP; tolak bila melewati batas jendela. */
-export function cekLaju(ip: string): HasilLaju {
-  const sekarang = Date.now();
-  const batasBawah = sekarang - JENDELA_MS;
-  const riwayat = (catatan.get(ip) ?? []).filter((t) => t > batasBawah);
+/** Bangun pemeriksa laju dengan jendela dan batasnya sendiri. */
+function buatPemeriksaLaju(jendelaMs: number, maksPerJendela: number) {
+  const catatan = new Map<string, number[]>();
 
-  if (riwayat.length >= MAKS_PER_JENDELA) {
-    const tungguDetik = Math.ceil((riwayat[0] + JENDELA_MS - sekarang) / 1000);
-    return { boleh: false, tungguDetik: Math.max(tungguDetik, 1) };
-  }
+  return function cek(ip: string): HasilLaju {
+    const sekarang = Date.now();
+    const batasBawah = sekarang - jendelaMs;
+    const riwayat = (catatan.get(ip) ?? []).filter((t) => t > batasBawah);
 
-  riwayat.push(sekarang);
-  catatan.set(ip, riwayat);
-  // Bersihkan entri basi sesekali agar Map tidak membengkak.
-  if (catatan.size > 5000) {
-    for (const [kunci, waktu] of catatan) {
-      if (waktu[waktu.length - 1] <= batasBawah) catatan.delete(kunci);
+    if (riwayat.length >= maksPerJendela) {
+      const tungguDetik = Math.ceil((riwayat[0] + jendelaMs - sekarang) / 1000);
+      return { boleh: false, tungguDetik: Math.max(tungguDetik, 1) };
     }
-  }
-  return { boleh: true, tungguDetik: 0 };
+
+    riwayat.push(sekarang);
+    catatan.set(ip, riwayat);
+    // Bersihkan entri basi sesekali agar Map tidak membengkak.
+    if (catatan.size > 5000) {
+      for (const [kunci, waktu] of catatan) {
+        if (waktu[waktu.length - 1] <= batasBawah) catatan.delete(kunci);
+      }
+    }
+    return { boleh: true, tungguDetik: 0 };
+  };
 }
+
+/** Pembuatan tautan: 20/jam per IP (dipakai POST /api/links). */
+export const cekLaju = buatPemeriksaLaju(60 * 60 * 1000, 20);
+
+/**
+ * Mutasi dasbor: 60/jam per IP (dipakai PATCH/DELETE /api/links/[kode]).
+ * Batasnya lebih longgar dari pembuatan karena pemilik sah bisa
+ * beres-beres banyak tautan sekaligus — tetap cukup untuk menahan skrip
+ * penghapus massal.
+ */
+export const cekLajuMutasi = buatPemeriksaLaju(60 * 60 * 1000, 60);
 
 /** Ambil IP klien dari header proxy, fallback ke "tak-dikenal". */
 export function ipKlien(request: Request): string {
