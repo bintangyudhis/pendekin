@@ -15,13 +15,40 @@ type Props = {
  * Satu baris tautan di dasbor: info ringkas + aksi.
  * Panel tambahan (QR, statistik) dibuka-tutup per baris.
  */
-export default function BarisTautan({ tautan }: Props) {
+export default function BarisTautan({ tautan, onStatusBerubah }: Props) {
   const [panel, setPanel] = useState<"qr" | "statistik" | null>(null);
+  const [sibuk, setSibuk] = useState(false);
+  const [galat, setGalat] = useState<string | null>(null);
   const domainTampil = tautan.pendek.replace(/^https?:\/\//, "");
 
   /** Buka-tutup satu panel; membuka yang lain menutup yang sedang terbuka. */
   function alihPanel(nama: "qr" | "statistik") {
     setPanel(panel === nama ? null : nama);
+  }
+
+  /** Balik status aktif via PATCH; daftar induk diperbarui lewat callback. */
+  async function ubahStatus() {
+    setSibuk(true);
+    setGalat(null);
+    try {
+      const res = await fetch(`/api/links/${tautan.kode}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aktif: !tautan.aktif }),
+      });
+      const json = (await res.json()) as
+        | { ok: true; data: { aktif: boolean } }
+        | { ok: false; pesan: string };
+      if (!json.ok) {
+        setGalat(json.pesan);
+      } else {
+        onStatusBerubah(tautan.kode, json.data.aktif);
+      }
+    } catch {
+      setGalat("Gagal menghubungi server. Coba lagi.");
+    } finally {
+      setSibuk(false);
+    }
   }
 
   return (
@@ -70,7 +97,21 @@ export default function BarisTautan({ tautan }: Props) {
         >
           {panel === "statistik" ? "tutup statistik" : "statistik"}
         </button>
+        <button
+          type="button"
+          onClick={ubahStatus}
+          disabled={sibuk}
+          className="border border-line px-3 py-1.5 font-mono text-xs hover:border-ink disabled:opacity-50"
+        >
+          {sibuk ? "menyimpan…" : tautan.aktif ? "nonaktifkan" : "aktifkan"}
+        </button>
       </div>
+
+      {galat && (
+        <p role="alert" className="mt-3 border-l-2 border-accent pl-3 text-sm">
+          {galat}
+        </p>
+      )}
 
       {panel === "qr" && (
         <div className="mt-4 flex items-start gap-4 border-t border-line pt-4">
