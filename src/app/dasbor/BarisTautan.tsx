@@ -15,10 +15,15 @@ type Props = {
  * Satu baris tautan di dasbor: info ringkas + aksi.
  * Panel tambahan (QR, statistik) dibuka-tutup per baris.
  */
-export default function BarisTautan({ tautan, onStatusBerubah }: Props) {
+export default function BarisTautan({
+  tautan,
+  onStatusBerubah,
+  onTerhapus,
+}: Props) {
   const [panel, setPanel] = useState<"qr" | "statistik" | null>(null);
   const [sibuk, setSibuk] = useState(false);
   const [galat, setGalat] = useState<string | null>(null);
+  const [hapusTahap, setHapusTahap] = useState<"siap" | "yakin">("siap");
   const domainTampil = tautan.pendek.replace(/^https?:\/\//, "");
 
   /** Buka-tutup satu panel; membuka yang lain menutup yang sedang terbuka. */
@@ -46,6 +51,34 @@ export default function BarisTautan({ tautan, onStatusBerubah }: Props) {
       }
     } catch {
       setGalat("Gagal menghubungi server. Coba lagi.");
+    } finally {
+      setSibuk(false);
+    }
+  }
+
+  /**
+   * Hapus tautan via DELETE — dua langkah agar tidak kepencet:
+   * klik pertama meminta konfirmasi, klik kedua mengeksekusi.
+   */
+  async function hapus() {
+    setSibuk(true);
+    setGalat(null);
+    try {
+      const res = await fetch(`/api/links/${tautan.kode}`, {
+        method: "DELETE",
+      });
+      const json = (await res.json()) as
+        | { ok: true; data: { kode: string } }
+        | { ok: false; pesan: string };
+      if (!json.ok) {
+        setGalat(json.pesan);
+        setHapusTahap("siap");
+      } else {
+        onTerhapus(tautan.kode);
+      }
+    } catch {
+      setGalat("Gagal menghubungi server. Coba lagi.");
+      setHapusTahap("siap");
     } finally {
       setSibuk(false);
     }
@@ -105,6 +138,37 @@ export default function BarisTautan({ tautan, onStatusBerubah }: Props) {
         >
           {sibuk ? "menyimpan…" : tautan.aktif ? "nonaktifkan" : "aktifkan"}
         </button>
+        {hapusTahap === "siap" ? (
+          <button
+            type="button"
+            onClick={() => setHapusTahap("yakin")}
+            className="border border-line px-3 py-1.5 font-mono text-xs text-accent hover:border-accent"
+          >
+            hapus
+          </button>
+        ) : (
+          <span className="inline-flex flex-wrap items-center gap-2">
+            <span className="font-mono text-xs text-muted">
+              Hapus beserta riwayat kliknya?
+            </span>
+            <button
+              type="button"
+              onClick={hapus}
+              disabled={sibuk}
+              className="bg-accent px-3 py-1.5 font-mono text-xs text-paper hover:brightness-95 disabled:opacity-50"
+            >
+              {sibuk ? "menghapus…" : "ya, hapus"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setHapusTahap("siap")}
+              disabled={sibuk}
+              className="border border-line px-3 py-1.5 font-mono text-xs hover:border-ink disabled:opacity-50"
+            >
+              batal
+            </button>
+          </span>
+        )}
       </div>
 
       {galat && (
