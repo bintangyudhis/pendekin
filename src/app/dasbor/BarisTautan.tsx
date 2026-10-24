@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import TombolSalin from "./TombolSalin";
+import PanelStatistik from "./PanelStatistik";
 import type { TautanDasbor } from "./DaftarTautan";
 
 type Props = {
@@ -15,8 +16,13 @@ type Props = {
  * Panel tambahan (QR, statistik) dibuka-tutup per baris.
  */
 export default function BarisTautan({ tautan }: Props) {
-  const [panel, setPanel] = useState<"qr" | null>(null);
+  const [panel, setPanel] = useState<"qr" | "statistik" | null>(null);
   const domainTampil = tautan.pendek.replace(/^https?:\/\//, "");
+
+  /** Buka-tutup satu panel; membuka yang lain menutup yang sedang terbuka. */
+  function alihPanel(nama: "qr" | "statistik") {
+    setPanel(panel === nama ? null : nama);
+  }
 
   return (
     <div className="py-5">
@@ -50,11 +56,19 @@ export default function BarisTautan({ tautan }: Props) {
         <TombolSalin teks={tautan.pendek} />
         <button
           type="button"
-          onClick={() => setPanel(panel === "qr" ? null : "qr")}
+          onClick={() => alihPanel("qr")}
           aria-expanded={panel === "qr"}
           className="border border-line px-3 py-1.5 font-mono text-xs hover:border-ink"
         >
           {panel === "qr" ? "tutup qr" : "kode qr"}
+        </button>
+        <button
+          type="button"
+          onClick={() => alihPanel("statistik")}
+          aria-expanded={panel === "statistik"}
+          className="border border-line px-3 py-1.5 font-mono text-xs hover:border-ink"
+        >
+          {panel === "statistik" ? "tutup statistik" : "statistik"}
         </button>
       </div>
 
@@ -76,6 +90,8 @@ export default function BarisTautan({ tautan }: Props) {
           </p>
         </div>
       )}
+
+      {panel === "statistik" && <PanelStatistik kode={tautan.kode} />}
     </div>
   );
 }
