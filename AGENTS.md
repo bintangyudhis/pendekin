@@ -59,3 +59,19 @@
   (policy_denied), bukan temuan kode; qrcode = paket resmi node-qrcode
   yang umum dipakai.
 
+## Perbaikan 24 Okt (permintaan Yudhis: navbar, tombol, anti-banjir)
+
+- BilahAtas kini `sticky top-0 z-50 bg-paper/85 backdrop-blur-md` — satu
+  komponen dipakai semua halaman, jadi cukup ubah di situ. Jangkar
+  beranda diberi `scroll-mt-20` agar tidak tertutup bilah lengket.
+- vercel.json memuat `"regions": ["sin1"]` (fungsi dekat DB Supabase
+  Singapura) — tanpa ini fungsi jalan di region default AS dan tiap klik
+  tombol terasa lambat. Toggle dasbor optimistis + `router.refresh()`
+  sesudah mutasi; status sibuk per aksi (`aksiSibuk`), bukan satu flag.
+- Anti-banjir pembuatan: penghitung in-memory POST DIGANTI hitungan
+  database. Kolom `Link.creatorIp` (migrasi 0002, nullable, tidak pernah
+  ditampilkan) + indeks `[creatorIp, createdAt]`; batas: 10/jam + 30/24jam
+  per IP, pemutus global 300/24jam, balas 429 + Retry-After. Body POST
+  kini maks 4 KB (dulu 16 KB). CAPTCHA belum dipasang — kandidat
+  berikutnya bila banjir berlanjut (Turnstile butuh kunci Cloudflare).
+
