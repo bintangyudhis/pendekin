@@ -1,3 +1,4 @@
+import BilahAtas from "./BilahAtas";
 import PendekinForm from "./PendekinForm";
 
 const REPO_URL = "https://github.com/bintangyudhis/pendekin";
@@ -20,30 +21,13 @@ const caraKerja = [
 export default function Home() {
   return (
     <div className="min-h-screen bg-paper text-ink">
-      {/* Bilah atas: sejajar tepi, label mono. */}
-      <header className="border-b border-line">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4 md:px-8">
-          <p className="font-mono text-sm font-semibold tracking-tight">
-            pendekin<span className="text-accent">.</span>
-          </p>
-          <nav className="flex items-center gap-5 font-mono text-xs text-muted">
-            <a href="#cara-kerja" className="hover:text-ink">
-              cara-kerja
-            </a>
-            <a href="#teknis" className="hover:text-ink">
-              teknis
-            </a>
-            <a
-              href={REPO_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="border border-line px-2.5 py-1.5 text-ink hover:border-ink"
-            >
-              github
-            </a>
-          </nav>
-        </div>
-      </header>
+      <BilahAtas
+        navigasi={[
+          { href: "#cara-kerja", label: "cara-kerja" },
+          { href: "#teknis", label: "teknis" },
+          { href: "/dasbor", label: "dasbor" },
+        ]}
+      />
 
       <main className="mx-auto max-w-5xl px-5 md:px-8">
         {/* Hero: rel indeks mono + kolom pernyataan. */}
