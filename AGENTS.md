@@ -16,6 +16,32 @@
 - Util `src/lib/slug.ts` (acakSlug, slugCustomValid, slugBolehDipakai) dan
   `src/lib/tautan.ts` (normalisasiUrl) disiapkan untuk API Day 5.
 
+## Pelajaran Day 6 (dasbor)
+
+- `cacheComponents: true` menolak `export const dynamic` DAN menolak
+  `connection()` di root page saat prerender ("blocking-prerender-dynamic").
+  Pola yang benar di Next 16: cangkang halaman statis + komponen server
+  async (`IsiDasbor`) di dalam `<Suspense>` — hasilnya Partial Prerender
+  (◐): cangkang statis, isi dinamis di-streaming tiap request.
+- `qrcode` (node-qrcode) render SVG tanpa width/height (hanya viewBox) —
+  atur ukuran lewat CSS (`[&_svg]:w-full`). Warna modul diganti ke tinta
+  tema (#1c1813 di atas #faf7f1): kontras tetap jauh di atas ambang pindai.
+- Agregasi harian memakai zona Asia/Jakarta via `Intl.DateTimeFormat`
+  (tanpa dependensi timezone): batas hari = 00:00 WIB, bukan UTC.
+- `dangerouslySetInnerHTML` untuk QR aman karena SVG dibuat di server dari
+  kode tervalidasi (slugBolehDipakai) + domain konstanta — bukan input
+  mentah user. Komentar alasannya ditulis di kode.
+- "dasbor" ditambahkan ke KODE_DILARANG agar kode custom tak menabrak
+  route /dasbor.
+- Sapuan keamanan ringan Day 6 (§1,§4,§6): history git bersih dari secret
+  (hanya placeholder di .env.example); tanpa NEXT_PUBLIC_; tanpa outbound
+  fetch baru (QR lokal, bukan API eksternal); PATCH/DELETE dibatasi
+  60/jam per IP + body 16KB + `aktif` wajib boolean. CATATAN: endpoint
+  stats/PATCH/DELETE masih publik — proteksi token pemilik adalah fitur
+  Day 7 sesuai PLAN. `npm audit` diblokir kebijakan registry di VM ini
+  (policy_denied), bukan temuan kode; qrcode = paket resmi node-qrcode
+  yang umum dipakai.
+
 ## Pelajaran Day 5 (API routes + redirect)
 
 - `export const dynamic = "force-dynamic"` DITOLAK saat `cacheComponents: true`
