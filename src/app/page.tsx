@@ -96,8 +96,9 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Cara kerja: buku besar, bukan kartu seragam. */}
-        <section id="cara-kerja" aria-label="Cara kerja" className="pb-16 md:pb-20">
+        {/* Cara kerja: buku besar, bukan kartu seragam.
+            scroll-mt: jangkar tidak tertutup bilah atas yang lengket. */}
+        <section id="cara-kerja" aria-label="Cara kerja" className="scroll-mt-20 pb-16 md:pb-20">
           <h2 className="font-mono text-xs uppercase tracking-[0.2em] text-muted">
             cara-kerja
           </h2>
@@ -120,7 +121,7 @@ export default function Home() {
         <section
           id="teknis"
           aria-label="Teknis"
-          className="border-y border-line py-10"
+          className="scroll-mt-20 border-y border-line py-10"
         >
           <h2 className="font-mono text-xs uppercase tracking-[0.2em] text-muted">
             teknis

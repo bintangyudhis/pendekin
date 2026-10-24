@@ -12,10 +12,13 @@ export type TautanNav = {
 /**
  * Bilah atas situs: wordmark di kiri, navigasi mono di kanan.
  * Dipakai beranda dan dasbor dengan daftar tautan yang berbeda.
+ * Lengket (sticky) di tepi atas viewport saat halaman digulir — latar
+ * semi-transparan + blur agar isi yang lewat di bawahnya tidak bertabrakan
+ * secara visual dengan teks navigasi.
  */
 export default function BilahAtas({ navigasi }: { navigasi: TautanNav[] }) {
   return (
-    <header className="border-b border-line">
+    <header className="sticky top-0 z-50 border-b border-line bg-paper/85 backdrop-blur-md">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4 md:px-8">
         <Link
           href="/"
