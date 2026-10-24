@@ -68,6 +68,58 @@ agar tiap kunjungan tercatat). Setiap kunjungan menyimpan satu baris
 `Click`: waktu, `referer`, dan `user-agent`. Kode tak dikenal atau tautan
 yang dinonaktifkan menampilkan halaman 404.
 
+### `GET /api/links/:kode/stats` — statistik satu tautan
+
+Respons `200`:
+
+```json
+{
+  "ok": true,
+  "data": {
+    "kode": "promo-okt",
+    "url": "https://contoh.com/...",
+    "judul": "Promo Oktober",
+    "aktif": true,
+    "dibuat": "2026-10-24T01:00:00.000Z",
+    "totalKlik": 42,
+    "perHari": [{ "tanggal": "2026-10-24", "label": "24 Okt", "klik": 5 }]
+  }
+}
+```
+
+`perHari` berisi 14 hari terakhir (zona WIB); hari tanpa klik bernilai 0.
+Kode tak dikenal → `tidak-ditemukan` (404).
+
+### `PATCH /api/links/:kode` — aktif/nonaktifkan tautan
+
+Body `{ "aktif": false }` menonaktifkan: tautan menampilkan 404 saat dibuka
+dan berhenti mencatat klik. Respons `200`:
+
+```json
+{ "ok": true, "data": { "kode": "promo-okt", "aktif": false } }
+```
+
+`aktif` wajib boolean (422 bila bukan). Dibatasi 60 mutasi/jam per IP
+(`terlalu-sering`, 429).
+
+### `DELETE /api/links/:kode` — hapus tautan
+
+Menghapus tautan beserta seluruh riwayat kliknya. Respons `200`:
+
+```json
+{ "ok": true, "data": { "kode": "promo-okt" } }
+```
+
+Kode tak dikenal → `tidak-ditemukan` (404). Batas laju sama seperti PATCH.
+
+### Halaman `/dasbor`
+
+Dasbor pemilik: ringkasan (jumlah tautan, total klik, klik 7 hari) +
+daftar tautan — tiap baris punya tombol salin, panel kode QR (di-render
+di server), panel statistik (total + grafik klik harian 14 hari, dimuat
+lazy dari endpoint stats), tombol aktif/nonaktif, dan hapus dengan
+konfirmasi dua langkah.
+
 ## Pengembangan lokal
 
 ```bash
