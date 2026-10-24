@@ -16,6 +16,23 @@
 - Util `src/lib/slug.ts` (acakSlug, slugCustomValid, slugBolehDipakai) dan
   `src/lib/tautan.ts` (normalisasiUrl) disiapkan untuk API Day 5.
 
+## Pelajaran Day 5 (API routes + redirect)
+
+- `export const dynamic = "force-dynamic"` DITOLAK saat `cacheComponents: true`
+  (Next 16): build gagal dengan pesan "not compatible". Route handler yang
+  membaca `request`/`params` sudah dinamis otomatis — tidak perlu config itu.
+- `notFound()` bisa dipanggil di Route Handler — me-render `not-found.tsx`
+  di segmen yang sama (`src/app/[code]/not-found.tsx`).
+- Redirect shortlink pakai `NextResponse.redirect(url, { status: 308, headers:
+  { "Cache-Control": "no-store" } })` — tanpa no-store, peramban meng-cache
+  308 dan klik berikutnya tidak tercatat.
+- Kegagalan `prisma.click.create` tidak boleh menggagalkan redirect:
+  bungkus try/catch dan log saja.
+- P2002 (unique violation) pada `link.create` = balapan dua request dengan
+  kode custom sama → kembalikan 409, bukan 500.
+- Rate limit in-memory cukup untuk rem darurat di satu instance; di Vercel
+  serverless tiap instance punya hitungannya sendiri (catat di komentar kode).
+
 ## Pelajaran Day 6 (dasbor)
 
 - `cacheComponents: true` menolak `export const dynamic` DAN menolak
@@ -42,19 +59,3 @@
   (policy_denied), bukan temuan kode; qrcode = paket resmi node-qrcode
   yang umum dipakai.
 
-## Pelajaran Day 5 (API routes + redirect)
-
-- `export const dynamic = "force-dynamic"` DITOLAK saat `cacheComponents: true`
-  (Next 16): build gagal dengan pesan "not compatible". Route handler yang
-  membaca `request`/`params` sudah dinamis otomatis — tidak perlu config itu.
-- `notFound()` bisa dipanggil di Route Handler — me-render `not-found.tsx`
-  di segmen yang sama (`src/app/[code]/not-found.tsx`).
-- Redirect shortlink pakai `NextResponse.redirect(url, { status: 308, headers:
-  { "Cache-Control": "no-store" } })` — tanpa no-store, peramban meng-cache
-  308 dan klik berikutnya tidak tercatat.
-- Kegagalan `prisma.click.create` tidak boleh menggagalkan redirect:
-  bungkus try/catch dan log saja.
-- P2002 (unique violation) pada `link.create` = balapan dua request dengan
-  kode custom sama → kembalikan 409, bukan 500.
-- Rate limit in-memory cukup untuk rem darurat di satu instance; di Vercel
-  serverless tiap instance punya hitungannya sendiri (catat di komentar kode).
