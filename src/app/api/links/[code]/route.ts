@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { slugBolehDipakai } from "@/lib/slug";
 import { agregasiKlikHarian } from "@/lib/statistik";
-import { apiGalat, apiSukses } from "@/lib/api";
+import { apiGalat, apiSukses, bacaJson } from "@/lib/api";
+import { cekLajuMutasi, ipKlien } from "@/lib/rate-limit";
 
 type ParamsKode = { params: Promise<{ code: string }> };
 
@@ -61,4 +62,67 @@ export async function GET(_request: Request, { params }: ParamsKode) {
       14,
     ),
   });
+}
+
+/** Tanggapi penolakan laju dengan 429 + header Retry-After. */
+function tolakLaju(request: Request) {
+  const laju = cekLajuMutasi(ipKlien(request));
+  if (!laju.boleh) {
+    const res = apiGalat(
+      "terlalu-sering",
+      "Terlalu banyak mengubah tautan. Coba lagi nanti.",
+      429,
+    );
+    res.headers.set("Retry-After", String(laju.tungguDetik));
+    return res;
+  }
+  return null;
+}
+
+type BodyAktif = { aktif?: unknown };
+
+/**
+ * PATCH /api/links/[kode] — aktifkan/nonaktifkan tautan.
+ * Body: { "aktif": true | false }. Tautan nonaktif menampilkan 404
+ * saat dibuka dan berhenti mencatat klik.
+ */
+export async function PATCH(request: Request, { params }: ParamsKode) {
+  const { code } = await params;
+  const tidakValid = kodeAtauGalat(code);
+  if (tidakValid) return tidakValid;
+
+  const ditolak = tolakLaju(request);
+  if (ditolak) return ditolak;
+
+  const hasil = await bacaJson<BodyAktif>(request);
+  if ("galat" in hasil) {
+    return apiGalat("body-tidak-valid", "Body harus berupa objek JSON.", 400);
+  }
+  if (typeof hasil.data.aktif !== "boolean") {
+    return apiGalat(
+      "aktif-tidak-valid",
+      'Field `aktif` wajib boolean: true atau false.',
+      422,
+    );
+  }
+
+  try {
+    const link = await prisma.link.update({
+      where: { code },
+      data: { active: hasil.data.aktif },
+      select: { code: true, active: true },
+    });
+    return apiSukses({ kode: link.code, aktif: link.active });
+  } catch (e) {
+    // P2025: update mengenai baris yang tidak ada.
+    if ((e as { code?: string }).code === "P2025") {
+      return apiGalat("tidak-ditemukan", "Tautan tidak ditemukan.", 404);
+    }
+    console.error("PATCH /api/links/[kode] gagal:", e);
+    return apiGalat(
+      "galat-server",
+      "Terjadi galat di server. Coba lagi sebentar.",
+      500,
+    );
+  }
 }
