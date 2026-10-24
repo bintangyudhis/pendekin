@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import TombolSalin from "./TombolSalin";
 import PanelStatistik from "./PanelStatistik";
 import type { TautanDasbor } from "./DaftarTautan";
@@ -20,8 +21,11 @@ export default function BarisTautan({
   onStatusBerubah,
   onTerhapus,
 }: Props) {
+  const router = useRouter();
   const [panel, setPanel] = useState<"qr" | "statistik" | null>(null);
-  const [sibuk, setSibuk] = useState(false);
+  // Sibuk per aksi: label "menyimpan…"/"menghapus…" hanya muncul di tombol
+  // yang benar-benar sedang bekerja, bukan di semua tombol sekaligus.
+  const [aksiSibuk, setAksiSibuk] = useState<"status" | "hapus" | null>(null);
   const [galat, setGalat] = useState<string | null>(null);
   const [hapusTahap, setHapusTahap] = useState<"siap" | "yakin">("siap");
   const domainTampil = tautan.pendek.replace(/^https?:\/\//, "");
@@ -31,28 +35,37 @@ export default function BarisTautan({
     setPanel(panel === nama ? null : nama);
   }
 
-  /** Balik status aktif via PATCH; daftar induk diperbarui lewat callback. */
+  /**
+   * Balik status aktif via PATCH — optimistis: tampilan berubah seketika,
+   * dikembalikan ke status semula bila server menolak, agar klik terasa
+   * instan walau jaringan lambat.
+   */
   async function ubahStatus() {
-    setSibuk(true);
+    const target = !tautan.aktif;
+    setAksiSibuk("status");
     setGalat(null);
+    onStatusBerubah(tautan.kode, target);
     try {
       const res = await fetch(`/api/links/${tautan.kode}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ aktif: !tautan.aktif }),
+        body: JSON.stringify({ aktif: target }),
       });
       const json = (await res.json()) as
         | { ok: true; data: { aktif: boolean } }
         | { ok: false; pesan: string };
       if (!json.ok) {
+        onStatusBerubah(tautan.kode, tautan.aktif);
         setGalat(json.pesan);
       } else {
         onStatusBerubah(tautan.kode, json.data.aktif);
+        router.refresh();
       }
     } catch {
+      onStatusBerubah(tautan.kode, tautan.aktif);
       setGalat("Gagal menghubungi server. Coba lagi.");
     } finally {
-      setSibuk(false);
+      setAksiSibuk(null);
     }
   }
 
@@ -61,7 +74,7 @@ export default function BarisTautan({
    * klik pertama meminta konfirmasi, klik kedua mengeksekusi.
    */
   async function hapus() {
-    setSibuk(true);
+    setAksiSibuk("hapus");
     setGalat(null);
     try {
       const res = await fetch(`/api/links/${tautan.kode}`, {
@@ -75,12 +88,14 @@ export default function BarisTautan({
         setHapusTahap("siap");
       } else {
         onTerhapus(tautan.kode);
+        // Segarkan data server agar angka ringkasan ikut berkurang.
+        router.refresh();
       }
     } catch {
       setGalat("Gagal menghubungi server. Coba lagi.");
       setHapusTahap("siap");
     } finally {
-      setSibuk(false);
+      setAksiSibuk(null);
     }
   }
 
@@ -133,16 +148,21 @@ export default function BarisTautan({
         <button
           type="button"
           onClick={ubahStatus}
-          disabled={sibuk}
+          disabled={aksiSibuk !== null}
           className="border border-line px-3 py-1.5 font-mono text-xs hover:border-ink disabled:opacity-50"
         >
-          {sibuk ? "menyimpan…" : tautan.aktif ? "nonaktifkan" : "aktifkan"}
+          {aksiSibuk === "status"
+            ? "menyimpan…"
+            : tautan.aktif
+              ? "nonaktifkan"
+              : "aktifkan"}
         </button>
         {hapusTahap === "siap" ? (
           <button
             type="button"
             onClick={() => setHapusTahap("yakin")}
-            className="border border-line px-3 py-1.5 font-mono text-xs text-accent hover:border-accent"
+            disabled={aksiSibuk !== null}
+            className="border border-line px-3 py-1.5 font-mono text-xs text-accent hover:border-accent disabled:opacity-50"
           >
             hapus
           </button>
@@ -154,15 +174,15 @@ export default function BarisTautan({
             <button
               type="button"
               onClick={hapus}
-              disabled={sibuk}
+              disabled={aksiSibuk !== null}
               className="bg-accent px-3 py-1.5 font-mono text-xs text-paper hover:brightness-95 disabled:opacity-50"
             >
-              {sibuk ? "menghapus…" : "ya, hapus"}
+              {aksiSibuk === "hapus" ? "menghapus…" : "ya, hapus"}
             </button>
             <button
               type="button"
               onClick={() => setHapusTahap("siap")}
-              disabled={sibuk}
+              disabled={aksiSibuk !== null}
               className="border border-line px-3 py-1.5 font-mono text-xs hover:border-ink disabled:opacity-50"
             >
               batal
