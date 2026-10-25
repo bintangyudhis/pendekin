@@ -94,3 +94,18 @@
   tampil hanya `FormMasuk`. Logout = hapus cookie + `router.refresh()`.
 - Login dibatasi 10 percobaan/15 menit per IP (`cekLajuMasuk`) — rem
   tebakan token, bukan penghalang pemilik sah.
+
+## Pelajaran Day 7 lanjutan (polish + sapuan keamanan)
+
+- Polish: `focus-visible` aksen global (tautan/tombol/input); pesan
+  khusus 401 di aksi baris dasbor ("sesi berakhir — muat ulang dan masuk
+  lagi") agar pemilik tidak menekan tombol yang sama berulang kali;
+  halaman 404 dapat jalan pintas ke dasbor; beranda menegaskan dasbor
+  hanya untuk pemilik. Tema Cap Pos dipertahankan — tanpa gradasi, tanpa
+  emoji, tanpa angka karangan (hallmark + kill-ai-slop diperiksa ulang).
+- Sapuan keamanan ringan Day 7: tidak ada `NEXT_PUBLIC_*` di src; hanya
+  `.env.example` yang terlacak (placeholder saja); `.env*` terabaikan di
+  .gitignore; tidak ada outbound fetch baru (login/logout lokal); body
+  login dibatasi 1 KB. Catatan terbuka: proteksi baru aktif penuh setelah
+  `PENDEKIN_OWNER_TOKEN` dipasang di environment Vercel + redeploy — sampai
+  saat itu dasbor menjawab 503 dengan pesan yang jelas (sengaja fail-closed).
