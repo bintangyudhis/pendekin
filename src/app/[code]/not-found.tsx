@@ -38,12 +38,18 @@ export default function KodeTidakDikenal() {
               Tautan pendek yang kamu buka tidak dikenal — mungkin salah ketik,
               atau pemiliknya sudah menonaktifkannya.
             </p>
-            <div className="mt-8">
+            <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href="/"
                 className="inline-block bg-accent px-5 py-3 text-sm font-semibold text-paper hover:brightness-95"
               >
                 Buat tautan pendek baru
+              </Link>
+              <Link
+                href="/dasbor"
+                className="inline-block border border-ink px-5 py-3 font-mono text-sm hover:bg-ink hover:text-paper"
+              >
+                buka dasbor pemilik
               </Link>
             </div>
           </div>
