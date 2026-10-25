@@ -16,7 +16,11 @@ Stack: **Next.js 16** + **Tailwind CSS v4** + **React 19**, **Prisma 6** +
   menampilkan halaman 404.
 - **Dasbor** — daftar tautan (tombol salin + kode QR), statistik klik per
   tautan, grafik klik harian, hapus/nonaktifkan tautan.
-- **Proteksi** — daftar tautan hanya untuk pemilik (token sederhana).
+- **Proteksi pemilik** — daftar tautan, statistik, dan mutasi tautan hanya
+  untuk pemilik: masuk ke `/dasbor` dengan token pemilik
+  (`PENDEKIN_OWNER_TOKEN`, environment server). Sesi disimpan sebagai cookie
+  httpOnly berisi hash token (bukan token mentah) selama 30 hari; tanpa
+  token terkonfigurasi, dasbor menolak akses (fail-closed, bukan terbuka).
 
 ## Skema database
 
