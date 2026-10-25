@@ -26,3 +26,12 @@ body {
   background: var(--color-paper);
   color: var(--color-ink);
 }
+
+/* Fokus keyboard yang jelas di semua elemen interaktif — satu warna
+   aksen, tanpa mengandalkan outline bawaan peramban yang tipis. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
