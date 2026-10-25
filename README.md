@@ -117,6 +117,17 @@ Menghapus tautan beserta seluruh riwayat kliknya. Respons `200`:
 
 Kode tak dikenal → `tidak-ditemukan` (404). Batas laju sama seperti PATCH.
 
+### `POST /api/auth/login` dan `POST /api/auth/logout` — sesi pemilik
+
+- Login: body `{ "token": "<nilai PENDEKIN_OWNER_TOKEN>" }`. Bila cocok,
+  server menyetel cookie sesi httpOnly (isi: hash SHA-256 token, 30 hari).
+  Percobaan masuk dibatasi 10 per 15 menit per IP (`terlalu-sering`, 429).
+- Bila token belum dipasang di server: `token-belum-dikonfigurasi` (503) —
+  bukan 401 yang menyesatkan.
+- Token salah: `token-salah` (401). Logout menghapus cookie sesi.
+- Klien API non-peramban bisa memakai header `x-owner-token` (token mentah)
+  sebagai pengganti cookie untuk endpoint pemilik di bawah.
+
 ### Halaman `/dasbor`
 
 Dasbor pemilik: ringkasan (jumlah tautan, total klik, klik 7 hari) +
