@@ -58,8 +58,9 @@ Respons sukses `201`:
 ```
 
 Kode galat: `url-tidak-valid` (422), `kode-tidak-valid` (422),
-`kode-dipakai` (409), `terlalu-sering` (429, maks. 20/jam per IP),
-`body-terlalu-besar` (413).
+`kode-dipakai` (409), `terlalu-sering` (429, dihitung dari database:
+maks. 10/jam + 30/hari per IP, pemutus global 300/hari),
+`body-terlalu-besar` (413, body maks 4 KB).
 
 Keamanan: URL ke host internal (localhost, IP privat, metadata cloud)
 ditolak, dan shortlink tidak boleh mengarah balik ke domain pendekin
