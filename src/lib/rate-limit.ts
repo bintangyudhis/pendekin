@@ -122,6 +122,14 @@ export async function cekBatasPembuatan(ip: string): Promise<HasilBatas> {
  */
 export const cekLajuMutasi = buatPemeriksaLaju(60 * 60 * 1000, 60);
 
+/**
+ * Percobaan masuk pemilik: 10 percobaan per 15 menit per IP — cukup longgar
+ * untuk salah ketik, cukup sempit untuk menahan tebakan token secara massal.
+ * Percobaan yang berhasil tidak perlu dihitung ketat: yang dibatasi adalah
+ * laju percobaan, bukan pemilik yang sah.
+ */
+export const cekLajuMasuk = buatPemeriksaLaju(15 * 60 * 1000, 10);
+
 /** Ambil IP klien dari header proxy, fallback ke "tak-dikenal". */
 export function ipKlien(request: Request): string {
   const teruskan = request.headers.get("x-forwarded-for");
