@@ -7,7 +7,7 @@ import IsiDasbor from "./IsiDasbor";
 export const metadata: Metadata = {
   title: "Dasbor — Pendekin",
   description:
-    "Daftar tautan pendek beserta jumlah kliknya: salin, kode QR, statistik harian, nonaktifkan, atau hapus.",
+    "Dasbor pemilik: daftar tautan pendek beserta jumlah kliknya — hanya bisa dibuka dengan token pemilik.",
 };
 
 /** Pengganti saat isi dinamis dasbor sedang di-streaming. */
@@ -47,7 +47,8 @@ export default function Dasbor() {
           <p className="mt-4 max-w-xl text-lg leading-relaxed text-muted">
             Daftar tautan pendek yang pernah dibuat — salin tautannya,
             tampilkan kode QR-nya, buka statistik kliknya, atau nonaktifkan
-            yang sudah tidak dipakai.
+            yang sudah tidak dipakai. Halaman ini hanya untuk pemilik:
+            pengunjung lain hanya melihat formulir masuk.
           </p>
         </section>
 
