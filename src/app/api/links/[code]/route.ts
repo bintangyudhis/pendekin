@@ -3,10 +3,38 @@ import { slugBolehDipakai } from "@/lib/slug";
 import { agregasiKlikHarian } from "@/lib/statistik";
 import { apiGalat, apiSukses, bacaJson } from "@/lib/api";
 import { cekLajuMutasi, ipKlien } from "@/lib/rate-limit";
+import {
+  pemilikMasukDariRequest,
+  tokenPemilikDikonfigurasi,
+} from "@/lib/pemilik";
 
 type ParamsKode = { params: Promise<{ code: string }> };
 
 const EMPAT_BELAS_HARI_MS = 14 * 24 * 60 * 60 * 1000;
+
+/**
+ * Penjaga data pemilik: semua endpoint di file ini (statistik, PATCH,
+ * DELETE) hanya untuk pemilik. Cookie sesi dasbor atau header
+ * `x-owner-token` yang sah. Server tanpa token terkonfigurasi menjawab
+ * 503 — fail-closed, bukan membiarkan akses tanpa proteksi.
+ */
+function penolakanPemilik(request: Request) {
+  if (!tokenPemilikDikonfigurasi()) {
+    return apiGalat(
+      "token-belum-dikonfigurasi",
+      "Token pemilik belum dipasang di server.",
+      503,
+    );
+  }
+  if (!pemilikMasukDariRequest(request)) {
+    return apiGalat(
+      "perlu-masuk",
+      "Data ini hanya untuk pemilik tautan. Masuk dulu lewat dasbor.",
+      401,
+    );
+  }
+  return null;
+}
 
 /** Kode dari path harus lolos aturan kode tautan; kalau tidak → 404. */
 function kodeAtauGalat(code: string) {
@@ -19,7 +47,9 @@ function kodeAtauGalat(code: string) {
  * GET /api/links/[kode]/stats — statistik satu tautan: total klik sepanjang
  * waktu + deret klik harian 14 hari terakhir (zona WIB, hari kosong = 0).
  */
-export async function GET(_request: Request, { params }: ParamsKode) {
+export async function GET(request: Request, { params }: ParamsKode) {
+  const ditolakPemilik = penolakanPemilik(request);
+  if (ditolakPemilik) return ditolakPemilik;
   const { code } = await params;
   const tidakValid = kodeAtauGalat(code);
   if (tidakValid) return tidakValid;
@@ -87,6 +117,8 @@ type BodyAktif = { aktif?: unknown };
  * saat dibuka dan berhenti mencatat klik.
  */
 export async function PATCH(request: Request, { params }: ParamsKode) {
+  const ditolakPemilik = penolakanPemilik(request);
+  if (ditolakPemilik) return ditolakPemilik;
   const { code } = await params;
   const tidakValid = kodeAtauGalat(code);
   if (tidakValid) return tidakValid;
@@ -132,6 +164,8 @@ export async function PATCH(request: Request, { params }: ParamsKode) {
  * (relasi Click memakai onDelete: Cascade).
  */
 export async function DELETE(request: Request, { params }: ParamsKode) {
+  const ditolakPemilik = penolakanPemilik(request);
+  if (ditolakPemilik) return ditolakPemilik;
   const { code } = await params;
   const tidakValid = kodeAtauGalat(code);
   if (tidakValid) return tidakValid;
