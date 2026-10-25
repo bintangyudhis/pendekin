@@ -56,7 +56,13 @@ export default function BarisTautan({
         | { ok: false; pesan: string };
       if (!json.ok) {
         onStatusBerubah(tautan.kode, tautan.aktif);
-        setGalat(json.pesan);
+        // Sesi habis terasa beda dari galat biasa: arahkan pemilik untuk
+        // masuk ulang, bukan menekan tombol yang sama berulang kali.
+        setGalat(
+          res.status === 401
+            ? "Sesi pemilik berakhir — muat ulang dasbor dan masuk lagi."
+            : json.pesan,
+        );
       } else {
         onStatusBerubah(tautan.kode, json.data.aktif);
         router.refresh();
@@ -84,7 +90,11 @@ export default function BarisTautan({
         | { ok: true; data: { kode: string } }
         | { ok: false; pesan: string };
       if (!json.ok) {
-        setGalat(json.pesan);
+        setGalat(
+          res.status === 401
+            ? "Sesi pemilik berakhir — muat ulang dasbor dan masuk lagi."
+            : json.pesan,
+        );
         setHapusTahap("siap");
       } else {
         onTerhapus(tautan.kode);
