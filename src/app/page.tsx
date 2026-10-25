@@ -137,7 +137,9 @@ export default function Home() {
             </p>
             <p className="leading-relaxed">
               Kode terbuka di GitHub. Isu rencana fitur, riwayat commit, dan
-              progres pengembangan semuanya tercatat di sana.
+              progres pengembangan semuanya tercatat di sana. Dasbornya
+              sendiri hanya untuk pemilik — pengunjung lain tidak bisa
+              mengintip daftar tautan maupun statistiknya.
             </p>
           </div>
         </section>
