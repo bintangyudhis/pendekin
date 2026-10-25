@@ -105,7 +105,9 @@ dan berhenti mencatat klik. Respons `200`:
 ```
 
 `aktif` wajib boolean (422 bila bukan). Dibatasi 60 mutasi/jam per IP
-(`terlalu-sering`, 429).
+(`terlalu-sering`, 429). Sejak Day 7, PATCH, DELETE, dan endpoint statistik
+hanya untuk pemilik: tanpa cookie sesi atau header `x-owner-token` yang
+sah → `perlu-masuk` (401); tanpa token terkonfigurasi di server → 503.
 
 ### `DELETE /api/links/:kode` — hapus tautan
 
@@ -157,3 +159,7 @@ Environment yang dibutuhkan di Vercel:
 
 - `DATABASE_URL` — pooler transaksi Supabase (port 6543) + `?pgbouncer=true`
 - `DIRECT_URL` — pooler session Supabase (port 5432), dipakai saat migrasi
+- `PENDEKIN_OWNER_TOKEN` — token pemilik dasbor (nilai acak panjang, mis.
+  hasil `openssl rand -hex 32`). Wajib dipasang agar `/dasbor` bisa dibuka;
+  tanpa ini dasbor menjawab 503. Setelah menambah/mengubahnya, redeploy
+  agar environment baru terbaca.
