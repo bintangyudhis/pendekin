@@ -1,5 +1,8 @@
 import { connection } from "next/server";
+import { pemilikMasukDariCookieServer } from "@/lib/pemilik";
 import { prisma } from "@/lib/prisma";
+import FormMasuk from "./FormMasuk";
+import TombolKeluar from "./TombolKeluar";
 import { buatQrSvg } from "@/lib/qr";
 import { tautanPendek } from "@/lib/situs";
 import { labelTanggalPenuh } from "@/lib/statistik";
@@ -14,6 +17,13 @@ const TUJUH_HARI_MS = 7 * 24 * 60 * 60 * 1000;
  */
 export default async function IsiDasbor() {
   await connection();
+
+  // Daftar tautan hanya untuk pemilik: tanpa cookie sesi yang sah,
+  // tampilkan formulir masuk — database tidak pernah dibaca, apalagi
+  // dirender, untuk pengunjung yang belum masuk.
+  if (!(await pemilikMasukDariCookieServer())) {
+    return <FormMasuk />;
+  }
 
   const [tautan, totalKlik, klik7Hari] = await Promise.all([
     prisma.link.findMany({
@@ -58,6 +68,12 @@ export default async function IsiDasbor() {
 
   return (
     <>
+      <div className="flex flex-wrap items-center justify-between gap-3 py-4">
+        <p className="font-mono text-xs text-muted">
+          masuk sebagai pemilik — sesi berlaku 30 hari
+        </p>
+        <TombolKeluar />
+      </div>
       <section aria-label="Ringkasan" className="border-y border-line">
         <dl className="grid grid-cols-3 divide-x divide-line">
           {ringkasan.map((baris) => (
