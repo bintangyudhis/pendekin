@@ -75,3 +75,22 @@
   kini maks 4 KB (dulu 16 KB). CAPTCHA belum dipasang — kandidat
   berikutnya bila banjir berlanjut (Turnstile butuh kunci Cloudflare).
 
+
+## Pelajaran Day 7 (proteksi pemilik + polish final)
+
+- Proteksi = token sederhana lewat env server `PENDEKIN_OWNER_TOKEN`
+  (bukan NEXT_PUBLIC_, tidak pernah ke bundel klien). Cookie sesi berisi
+  HASH SHA-256 token, bukan token mentah; perbandingan token pakai
+  `timingSafeEqual` atas hash agar panjang token tidak bocor lewat waktu.
+  Cookie httpOnly + SameSite lax + Secure di produksi, path "/", 30 hari.
+- Fail-closed: server tanpa token menjawab 503
+  (`token-belum-dikonfigurasi`), bukan membuka dasbor. Endpoint pemilik
+  (GET stats, PATCH, DELETE) dijaga `penolakanPemilik()` di awal handler:
+  cookie sesi ATAU header `x-owner-token`. Perhatian: dua handler memakai
+  variabel `ditolak` untuk rate limit — variabel penjaga harus bernama lain
+  (`ditolakPemilik`) agar build Turbopack tidak gagal "defined multiple times".
+- Dasbor dijaga di Server Component `IsiDasbor` (di dalam Suspense), bukan
+  di page root: tanpa sesi, database tidak dibaca sama sekali dan yang
+  tampil hanya `FormMasuk`. Logout = hapus cookie + `router.refresh()`.
+- Login dibatasi 10 percobaan/15 menit per IP (`cekLajuMasuk`) — rem
+  tebakan token, bukan penghalang pemilik sah.
