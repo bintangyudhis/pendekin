@@ -71,6 +71,10 @@ npm start
 
 Perintah `npm run build` menjalankan migrasi database lebih dulu, lalu membangun aplikasi. Pemeriksaan kode memakai `npm run lint`.
 
+## Tangkapan Layar
+
+![Tampilan halaman utama Pendekin.](docs/screenshot.png)
+
 ## Lisensi
 
 Proyek ini memakai lisensi MIT. Lihat berkas [LICENSE](LICENSE).
