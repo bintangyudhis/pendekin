@@ -1,165 +1,76 @@
 # Pendekin
 
-Pemendek tautan (URL shortener) dengan dasbor analitik klik. Tempel tautan
-yang panjang, dapatkan tautan pendek yang gampang dibagikan — setiap
-kunjungan dicatat dan divisualisasikan per tautan.
+Pendekin adalah aplikasi pemendek tautan. Pengguna menempelkan tautan panjang dan mendapat tautan pendek dengan slug acak atau slug pilihan sendiri. Setiap kunjungan ke tautan pendek dicatat dan ringkasannya tampil di dasbor pemilik.
 
-Stack: **Next.js 16** + **Tailwind CSS v4** + **React 19**, **Prisma 6** +
-**PostgreSQL** (Supabase).
+Situs live: https://pendekin.bintangyudhis.my.id
 
 ## Fitur
 
-- **Buat shortlink** — `POST /api/links`: slug otomatis atau kode custom,
-  dengan validasi URL.
-- **Redirect + pencatatan klik** — `GET /[kode]`: redirect 308 ke tautan asli,
-  mencatat waktu, referer, dan user-agent tiap kunjungan; kode tak dikenal
-  menampilkan halaman 404.
-- **Dasbor** — daftar tautan (tombol salin + kode QR), statistik klik per
-  tautan, grafik klik harian, hapus/nonaktifkan tautan.
-- **Proteksi pemilik** — daftar tautan, statistik, dan mutasi tautan hanya
-  untuk pemilik: masuk ke `/dasbor` dengan token pemilik
-  (`PENDEKIN_OWNER_TOKEN`, environment server). Sesi disimpan sebagai cookie
-  httpOnly berisi hash token (bukan token mentah) selama 30 hari; tanpa
-  token terkonfigurasi, dasbor menolak akses (fail-closed, bukan terbuka).
+- Pembuatan tautan pendek lewat `POST /api/links` dengan validasi URL tujuan. Skema `https://` boleh tidak ditulis.
+- Slug custom 3 sampai 32 karakter berupa huruf, angka, tanda hubung, dan garis bawah.
+- Redirect 308 ke tautan tujuan. Setiap kunjungan mencatat waktu, referer, dan user agent.
+- Halaman 404 untuk kode yang tidak dikenal.
+- Dasbor pemilik berisi daftar tautan, tombol salin, kode QR, statistik klik per tautan, dan grafik klik harian 14 hari.
+- Tautan bisa dinonaktifkan dan dihapus dari dasbor.
+- Proteksi dasbor memakai token pemilik yang dibaca dari environment server. Sesi disimpan sebagai cookie httpOnly berisi hash token selama 30 hari.
+- Dasbor menolak akses bila token pemilik belum terkonfigurasi.
+- Pembatasan jumlah pembuatan tautan per alamat IP untuk menekan penyalahgunaan.
 
-## Skema database
+## Teknologi
 
-| Model | Isi |
-| ----- | --- |
-| `Link` | `code` (unik), `url` tujuan, `title` opsional, `active` |
-| `Click` | satu baris per kunjungan: `linkId`, `clickedAt`, `referer`, `userAgent` |
+- Next.js 16 dan React 19 dengan App Router
+- TypeScript
+- Tailwind CSS v4
+- Prisma 6 dan PostgreSQL dari Supabase lewat connection pooler
+- Paket qrcode untuk membuat kode QR tautan
 
-Nama migrasi memakai prefiks `pendekin` (mis. `0001_pendekin_init`) agar tidak
-bentrok dengan repo lain yang berbagi database Supabase yang sama.
+## Cara Instalasi
 
-## Endpoint API
+Prasyarat:
 
-### `POST /api/links` — buat shortlink
+- Node.js 20 atau lebih baru
+- Database PostgreSQL, misalnya project Supabase
 
-Body JSON:
-
-```json
-{
-  "url": "https://contoh.com/artikel/panjang",
-  "kode": "promo-okt",
-  "judul": "Promo Oktober"
-}
-```
-
-- `url` (wajib): tautan tujuan. Skema boleh ditulis tanpa `https://`.
-- `kode` (opsional): kode custom 3–32 karakter (huruf, angka, `-`, `_`).
-  Kosongkan untuk kode acak 7 karakter.
-- `judul` (opsional): label untuk dikenali di dasbor, maks. 120 karakter.
-
-Respons sukses `201`:
-
-```json
-{ "ok": true, "data": { "kode": "promo-okt", "url": "https://contoh.com/...", "judul": "Promo Oktober" } }
-```
-
-Kode galat: `url-tidak-valid` (422), `kode-tidak-valid` (422),
-`kode-dipakai` (409), `terlalu-sering` (429, dihitung dari database:
-maks. 10/jam + 30/hari per IP, pemutus global 300/hari),
-`body-terlalu-besar` (413, body maks 4 KB).
-
-Keamanan: URL ke host internal (localhost, IP privat, metadata cloud)
-ditolak, dan shortlink tidak boleh mengarah balik ke domain pendekin
-sendiri (anti redirect berputar).
-
-### `GET /:kode` — redirect + catat klik
-
-Mengalihkan ke tautan asli dengan status `308` (redirect tidak di-cache
-agar tiap kunjungan tercatat). Setiap kunjungan menyimpan satu baris
-`Click`: waktu, `referer`, dan `user-agent`. Kode tak dikenal atau tautan
-yang dinonaktifkan menampilkan halaman 404.
-
-### `GET /api/links/:kode/stats` — statistik satu tautan
-
-Respons `200`:
-
-```json
-{
-  "ok": true,
-  "data": {
-    "kode": "promo-okt",
-    "url": "https://contoh.com/...",
-    "judul": "Promo Oktober",
-    "aktif": true,
-    "dibuat": "2026-10-24T01:00:00.000Z",
-    "totalKlik": 42,
-    "perHari": [{ "tanggal": "2026-10-24", "label": "24 Okt", "klik": 5 }]
-  }
-}
-```
-
-`perHari` berisi 14 hari terakhir (zona WIB); hari tanpa klik bernilai 0.
-Kode tak dikenal → `tidak-ditemukan` (404).
-
-### `PATCH /api/links/:kode` — aktif/nonaktifkan tautan
-
-Body `{ "aktif": false }` menonaktifkan: tautan menampilkan 404 saat dibuka
-dan berhenti mencatat klik. Respons `200`:
-
-```json
-{ "ok": true, "data": { "kode": "promo-okt", "aktif": false } }
-```
-
-`aktif` wajib boolean (422 bila bukan). Dibatasi 60 mutasi/jam per IP
-(`terlalu-sering`, 429). Sejak Day 7, PATCH, DELETE, dan endpoint statistik
-hanya untuk pemilik: tanpa cookie sesi atau header `x-owner-token` yang
-sah → `perlu-masuk` (401); tanpa token terkonfigurasi di server → 503.
-
-### `DELETE /api/links/:kode` — hapus tautan
-
-Menghapus tautan beserta seluruh riwayat kliknya. Respons `200`:
-
-```json
-{ "ok": true, "data": { "kode": "promo-okt" } }
-```
-
-Kode tak dikenal → `tidak-ditemukan` (404). Batas laju sama seperti PATCH.
-
-### `POST /api/auth/login` dan `POST /api/auth/logout` — sesi pemilik
-
-- Login: body `{ "token": "<nilai PENDEKIN_OWNER_TOKEN>" }`. Bila cocok,
-  server menyetel cookie sesi httpOnly (isi: hash SHA-256 token, 30 hari).
-  Percobaan masuk dibatasi 10 per 15 menit per IP (`terlalu-sering`, 429).
-- Bila token belum dipasang di server: `token-belum-dikonfigurasi` (503) —
-  bukan 401 yang menyesatkan.
-- Token salah: `token-salah` (401). Logout menghapus cookie sesi.
-- Klien API non-peramban bisa memakai header `x-owner-token` (token mentah)
-  sebagai pengganti cookie untuk endpoint pemilik di bawah.
-
-### Halaman `/dasbor`
-
-Dasbor pemilik: ringkasan (jumlah tautan, total klik, klik 7 hari) +
-daftar tautan — tiap baris punya tombol salin, panel kode QR (di-render
-di server), panel statistik (total + grafik klik harian 14 hari, dimuat
-lazy dari endpoint stats), tombol aktif/nonaktif, dan hapus dengan
-konfirmasi dua langkah.
-
-## Pengembangan lokal
+Langkah instalasi:
 
 ```bash
-cp .env.example .env   # isi DATABASE_URL & DIRECT_URL
+git clone https://github.com/bintangyudhis/pendekin.git
+cd pendekin
 npm install
-npx prisma migrate dev
+cp .env.example .env
+```
+
+Isi nilai variabel berikut di berkas `.env`:
+
+- `DATABASE_URL`
+- `DIRECT_URL`
+- `PENDEKIN_OWNER_TOKEN`
+
+Lalu jalankan migrasi database:
+
+```bash
+npx prisma migrate deploy
+```
+
+## Cara Menjalankan
+
+Mode pengembangan:
+
+```bash
 npm run dev
 ```
 
-## Deploy
+Buka http://localhost:3000 di browser. Dasbor pemilik berada di http://localhost:3000/dasbor dan meminta token pemilik saat pertama kali dibuka.
 
-Deploy di Vercel. `vercel.json` memakai `ignoreCommand` sehingga commit yang
-pesan-nya mengandung `[skip-vercel]` tidak memicu build (hemat limit build):
-deploy resmi hanya lewat commit `Day N: deploy`. Build production menjalankan
-`prisma migrate deploy && next build` — migrasi database ikut teraplikasi
-otomatis.
+Mode produksi:
 
-Environment yang dibutuhkan di Vercel:
+```bash
+npm run build
+npm start
+```
 
-- `DATABASE_URL` — pooler transaksi Supabase (port 6543) + `?pgbouncer=true`
-- `DIRECT_URL` — pooler session Supabase (port 5432), dipakai saat migrasi
-- `PENDEKIN_OWNER_TOKEN` — token pemilik dasbor (nilai acak panjang, mis.
-  hasil `openssl rand -hex 32`). Wajib dipasang agar `/dasbor` bisa dibuka;
-  tanpa ini dasbor menjawab 503. Setelah menambah/mengubahnya, redeploy
-  agar environment baru terbaca.
+Perintah `npm run build` menjalankan migrasi database lebih dulu, lalu membangun aplikasi. Pemeriksaan kode memakai `npm run lint`.
+
+## Lisensi
+
+Proyek ini memakai lisensi MIT. Lihat berkas [LICENSE](LICENSE).
