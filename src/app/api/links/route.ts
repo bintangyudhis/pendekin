@@ -3,6 +3,7 @@ import { acakSlug, slugBolehDipakai } from "@/lib/slug";
 import { normalisasiUrl } from "@/lib/tautan";
 import { apiGalat, apiSukses, bacaJson } from "@/lib/api";
 import { cekBatasPembuatan, ipKlien } from "@/lib/rate-limit";
+import { penggunaDariRequest } from "@/lib/auth";
 
 // Route handler yang membaca `request` selalu dinamis — tanpa perlu
 // `export const dynamic` (ditolak saat cacheComponents aktif).
@@ -18,6 +19,18 @@ const PESAN_KODE =
 
 export async function POST(request: Request) {
   try {
+    // Membuat tautan wajib masuk: tautan dicatat atas nama akun
+    // pembuatnya, dan hanya akun itu yang bisa melihat statistik
+    // serta mengubahnya di dasbor.
+    const pengguna = await penggunaDariRequest(request);
+    if (!pengguna) {
+      return apiGalat(
+        "perlu-masuk",
+        "Masuk dulu untuk membuat tautan. Belum punya akun? Daftar gratis.",
+        401,
+      );
+    }
+
     // Kuota pembuatan dihitung dari database (per IP + global) agar
     // berlaku lintas instance serverless — bukan penghitung memori.
     const ip = ipKlien(request);
@@ -87,7 +100,7 @@ export async function POST(request: Request) {
         : null;
 
     const link = await prisma.link.create({
-      data: { code: kode, url, title: judul, creatorIp: ip },
+      data: { code: kode, url, title: judul, creatorIp: ip, userId: pengguna.id },
       select: { code: true, url: true, title: true, createdAt: true },
     });
 
