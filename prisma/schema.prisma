@@ -8,6 +8,38 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+/// Akun pengguna pendekin. Nama model dan tabel sengaja memakai prefiks
+/// Pendekin: database Supabase ini dipakai bersama repo lain (dompetku-web
+/// sudah punya tabel "User" sendiri), jadi tabel umum tanpa prefiks akan
+/// bentrok. Kata sandi hanya disimpan sebagai hash scrypt, tidak pernah
+/// dalam bentuk teks biasa.
+model PendekinUser {
+  id            String           @id @default(cuid())
+  email         String           @unique // disimpan sudah dinormalisasi (huruf kecil)
+  nama          String? // nama tampilan opsional
+  kataSandiHash String
+  createdAt     DateTime         @default(now())
+  links         Link[]
+  sessions      PendekinSession[]
+
+  @@map("PendekinUser")
+}
+
+/// Sesi masuk. Cookie peramban memegang token acak mentah, database hanya
+/// menyimpan hash SHA-256 token itu: isi database yang bocor tidak bisa
+/// dipakai sebagai cookie. Logout menghapus baris sesi ini di server.
+model PendekinSession {
+  id        String       @id @default(cuid())
+  tokenHash String       @unique
+  userId    String
+  user      PendekinUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime     @default(now())
+
+  @@index([userId])
+  @@map("PendekinSession")
+}
+
 /// Tautan yang dipendekkan. `code` adalah slug pendek yang muncul di URL,
 /// mis. "x7K2qQ" untuk https://pendekin.bintangyudhis.my.id/x7K2qQ.
 model Link {
@@ -21,10 +53,16 @@ model Link {
   // (dihitung dari database agar berlaku lintas instance serverless).
   // Tidak pernah ditampilkan di dasbor/API. Baris lama bernilai null.
   creatorIp String?
+  // Pemilik tautan (akun pembuatnya). Baris lama dari era token pemilik
+  // bernilai null: tautannya tetap redirect seperti biasa, tetapi tidak
+  // masuk dasbor akun mana pun.
+  userId    String?
+  user      PendekinUser? @relation(fields: [userId], references: [id], onDelete: SetNull)
   clicks    Click[]
 
   @@index([createdAt])
   @@index([creatorIp, createdAt])
+  @@index([userId, createdAt])
 }
 
 /// Satu baris per kunjungan ke shortlink. Dasar statistik dashboard.
