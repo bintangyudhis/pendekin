@@ -23,6 +23,9 @@ const KODE_DILARANG = new Set([
   "login",
   "404",
   "admin",
+  "masuk",
+  "daftar",
+  "stats",
 ]);
 
 export function slugBolehDipakai(kode: string): boolean {
