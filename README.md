@@ -1,6 +1,6 @@
 # Pendekin
 
-Pendekin adalah aplikasi pemendek tautan. Pengguna menempelkan tautan panjang dan mendapat tautan pendek dengan slug acak atau slug pilihan sendiri. Setiap kunjungan ke tautan pendek dicatat dan ringkasannya tampil di dasbor pemilik.
+Pendekin adalah aplikasi pemendek tautan. Pengguna mendaftar akun, menempelkan tautan panjang, dan mendapat tautan pendek dengan slug acak atau slug pilihan sendiri. Setiap kunjungan ke tautan pendek dicatat dan ringkasannya tampil di dasbor akun pembuatnya.
 
 Situs live: https://pendekin.bintangyudhis.my.id
 
@@ -10,10 +10,11 @@ Situs live: https://pendekin.bintangyudhis.my.id
 - Slug custom 3 sampai 32 karakter berupa huruf, angka, tanda hubung, dan garis bawah.
 - Redirect 308 ke tautan tujuan. Setiap kunjungan mencatat waktu, referer, dan user agent.
 - Halaman 404 untuk kode yang tidak dikenal.
-- Dasbor pemilik berisi daftar tautan, tombol salin, kode QR, statistik klik per tautan, dan grafik klik harian 14 hari.
-- Tautan bisa dinonaktifkan dan dihapus dari dasbor.
-- Proteksi dasbor memakai token pemilik yang dibaca dari environment server. Sesi disimpan sebagai cookie httpOnly berisi hash token selama 30 hari.
-- Dasbor menolak akses bila token pemilik belum terkonfigurasi.
+- Akun pengguna lewat halaman daftar dan masuk dengan email dan kata sandi. Kata sandi disimpan sebagai hash scrypt dan sesi disimpan di database sebagai hash token dengan cookie httpOnly selama 30 hari.
+- Pembuatan tautan wajib masuk. Setiap tautan tercatat atas nama akun pembuatnya.
+- Dasbor akun berisi daftar tautan milik akun itu sendiri, tombol salin, kode QR, statistik klik per tautan, dan grafik klik harian 14 hari.
+- Tautan bisa dinonaktifkan dan dihapus oleh pemiliknya dari dasbor. Statistik, pengubahan, dan penghapusan tautan akun lain ditolak di server.
+- Tautan yang dibuat sebelum ada sistem akun tetap bisa dibuka pengunjung, tetapi tidak tampil di dasbor akun mana pun.
 - Pembatasan jumlah pembuatan tautan per alamat IP untuk menekan penyalahgunaan.
 
 ## Teknologi
@@ -44,7 +45,6 @@ Isi nilai variabel berikut di berkas `.env`:
 
 - `DATABASE_URL`
 - `DIRECT_URL`
-- `PENDEKIN_OWNER_TOKEN`
 
 Lalu jalankan migrasi database:
 
@@ -60,7 +60,7 @@ Mode pengembangan:
 npm run dev
 ```
 
-Buka http://localhost:3000 di browser. Dasbor pemilik berada di http://localhost:3000/dasbor dan meminta token pemilik saat pertama kali dibuka.
+Buka http://localhost:3000 di browser. Buat akun lewat http://localhost:3000/daftar, lalu dasbor akunmu berada di http://localhost:3000/dasbor.
 
 Mode produksi:
 

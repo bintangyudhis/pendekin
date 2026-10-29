@@ -109,3 +109,14 @@
   login dibatasi 1 KB. Catatan terbuka: proteksi baru aktif penuh setelah
   `PENDEKIN_OWNER_TOKEN` dipasang di environment Vercel + redeploy — sampai
   saat itu dasbor menjawab 503 dengan pesan yang jelas (sengaja fail-closed).
+
+## Sistem akun (30 Okt 2026, permintaan Yudhis: ganti token pemilik)
+
+- Token pemilik `PENDEKIN_OWNER_TOKEN` DICABUT TOTAL atas perintah Yudhis ("gausah pake token, bikin akun dulu login baru bisa buka dashboard"). `src/lib/pemilik.ts` dihapus; jangan hidupkan lagi model satu token bersama.
+- Akun: model `PendekinUser` + `PendekinSession` dengan nama tabel berprefiks Pendekin (migrasi `0003_pendekin_akun`). Prefiks WAJIB: database Supabase ini dipakai bersama dompetku-web yang sudah punya tabel "User". `Link.userId` nullable, relasi onDelete SetNull.
+- Auth di `src/lib/auth.ts`: kata sandi hash scrypt node:crypto (salt acak per pengguna, verifikasi timingSafeEqual), tanpa dependensi baru. Sesi = token acak 32 byte; cookie httpOnly memegang token mentah, database hanya menyimpan hash SHA-256-nya. Logout menghapus baris sesi di server. Login memakai hash umpan untuk email tak terdaftar agar waktu respons tidak membocorkan keberadaan akun; pesan galat login selalu generik.
+- Membuat tautan (POST /api/links) WAJIB masuk (401 tanpa sesi) dan mencatat `userId`. Endpoint statistik/PATCH/DELETE memakai penjaga `tautanMilikPengguna` di `src/lib/akses-tautan.ts`: belum masuk 401, tautan orang lain atau tidak ada sama-sama 404. Statistik/PATCH/DELETE hanya mengutak-atik baris lewat `link.id` hasil penjaga, bukan kode mentah dari path.
+- Rute statistik sekarang berdiri sendiri di `src/app/api/links/[code]/stats/route.ts`. Sebelumnya handler statistik menumpang di `[code]/route.ts` sehingga path `/stats` yang diminta PanelStatistik sejak Day 6 tidak pernah cocok dan panel selalu gagal memuat; bug laten itu ikut terperbaiki di perubahan ini.
+- Tautan lama era token (userId null): redirect publik tetap jalan, tetapi tidak masuk dasbor akun mana pun dan tidak bisa diklaim. Keputusan sadar demi keamanan (klaim massal oleh pendaftar pertama adalah lubang kepemilikan), dicantumkan juga di dasbor dan README.
+- Beranda sadar sesi memakai pola PPR dasbor: komponen server async `SeksiPendekkan` di dalam Suspense membaca cookie lalu meneruskan email ke formulir klien; belum masuk tampil panel ajakan daftar/masuk. Kata "masuk", "daftar", "stats" ditambahkan ke KODE_DILARANG di slug.ts.
+- Lint `react-hooks/purity` menolak `Date.now()` langsung di Server Component dasbor; bungkus lewat helper `sejakBerapaMsLalu` di `src/lib/statistik.ts`.
