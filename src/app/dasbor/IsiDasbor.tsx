@@ -1,32 +1,71 @@
 import { connection } from "next/server";
-import { pemilikMasukDariCookieServer } from "@/lib/pemilik";
+import Link from "next/link";
+import { penggunaDariCookieServer } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import FormMasuk from "./FormMasuk";
 import TombolKeluar from "./TombolKeluar";
 import { buatQrSvg } from "@/lib/qr";
 import { tautanPendek } from "@/lib/situs";
-import { labelTanggalPenuh } from "@/lib/statistik";
+import { labelTanggalPenuh, sejakBerapaMsLalu } from "@/lib/statistik";
 import DaftarTautan, { type TautanDasbor } from "./DaftarTautan";
 
 const TUJUH_HARI_MS = 7 * 24 * 60 * 60 * 1000;
 
+/** Panel untuk pengunjung yang belum masuk: database tidak dibaca sama sekali. */
+function PanelBelumMasuk() {
+  return (
+    <section aria-label="Belum masuk" className="py-10 md:py-14">
+      <div className="max-w-md border border-line">
+        <div className="border-b border-line px-5 py-3">
+          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted">
+            area-akun
+          </p>
+        </div>
+        <div className="space-y-4 px-5 py-6">
+          <p className="leading-relaxed">
+            Dasbor berisi tautan milik akunmu sendiri. Masuk dulu untuk
+            melihatnya, atau daftar bila belum punya akun.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/masuk"
+              className="bg-accent px-5 py-3 text-sm font-semibold text-paper hover:brightness-95"
+            >
+              masuk
+            </Link>
+            <Link
+              href="/daftar"
+              className="border border-ink px-5 py-3 font-mono text-sm hover:bg-ink hover:text-paper"
+            >
+              daftar akun
+            </Link>
+          </div>
+          <p className="font-mono text-xs leading-relaxed text-muted">
+            Tautan yang dibuat sebelum ada sistem akun tetap bisa dibuka
+            pengunjung seperti biasa, tetapi tidak tampil di dasbor akun
+            mana pun.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /**
- * Isi dinamis dasbor: ringkasan angka + daftar tautan.
- * Di-render di dalam <Suspense> di page.tsx — cangkang halaman boleh
- * di-prerender, bagian ini di-streaming tiap request karena membaca database.
+ * Isi dinamis dasbor: ringkasan angka + daftar tautan MILIK akun yang
+ * masuk. Di-render di dalam <Suspense> di page.tsx agar cangkang
+ * halaman bisa di-prerender dan bagian ini di-streaming tiap request.
  */
 export default async function IsiDasbor() {
   await connection();
 
-  // Daftar tautan hanya untuk pemilik: tanpa cookie sesi yang sah,
-  // tampilkan formulir masuk — database tidak pernah dibaca, apalagi
-  // dirender, untuk pengunjung yang belum masuk.
-  if (!(await pemilikMasukDariCookieServer())) {
-    return <FormMasuk />;
+  const pengguna = await penggunaDariCookieServer();
+  if (!pengguna) {
+    return <PanelBelumMasuk />;
   }
 
   const [tautan, totalKlik, klik7Hari] = await Promise.all([
     prisma.link.findMany({
+      where: { userId: pengguna.id },
       orderBy: { createdAt: "desc" },
       select: {
         code: true,
@@ -37,9 +76,12 @@ export default async function IsiDasbor() {
         _count: { select: { clicks: true } },
       },
     }),
-    prisma.click.count(),
+    prisma.click.count({ where: { link: { userId: pengguna.id } } }),
     prisma.click.count({
-      where: { clickedAt: { gte: new Date(Date.now() - TUJUH_HARI_MS) } },
+      where: {
+        link: { userId: pengguna.id },
+        clickedAt: { gte: sejakBerapaMsLalu(TUJUH_HARI_MS) },
+      },
     }),
   ]);
 
@@ -59,7 +101,7 @@ export default async function IsiDasbor() {
     }),
   );
 
-  // Angka nyata dari database, bukan karangan.
+  // Angka nyata dari database, hanya milik akun ini.
   const ringkasan = [
     { kunci: "tautan", nilai: String(tautan.length) },
     { kunci: "total-klik", nilai: String(totalKlik) },
@@ -70,7 +112,8 @@ export default async function IsiDasbor() {
     <>
       <div className="flex flex-wrap items-center justify-between gap-3 py-4">
         <p className="font-mono text-xs text-muted">
-          masuk sebagai pemilik — sesi berlaku 30 hari
+          masuk sebagai{" "}
+          {pengguna.nama ? `${pengguna.nama} (${pengguna.email})` : pengguna.email}
         </p>
         <TombolKeluar />
       </div>

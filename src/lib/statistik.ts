@@ -64,3 +64,8 @@ export function agregasiKlikHarian(
 export function labelTanggalPenuh(tanggal: Date): string {
   return fmtPenuh.format(tanggal);
 }
+
+/** Titik waktu `ms` milidetik sebelum sekarang, untuk filter rentang klik. */
+export function sejakBerapaMsLalu(ms: number): Date {
+  return new Date(Date.now() - ms);
+}

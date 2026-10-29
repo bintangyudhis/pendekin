@@ -7,7 +7,7 @@ import IsiDasbor from "./IsiDasbor";
 export const metadata: Metadata = {
   title: "Dasbor — Pendekin",
   description:
-    "Dasbor pemilik: daftar tautan pendek beserta jumlah kliknya — hanya bisa dibuka dengan token pemilik.",
+    "Dasbor akunmu: daftar tautan pendek milikmu beserta jumlah kliknya.",
 };
 
 /** Pengganti saat isi dinamis dasbor sedang di-streaming. */
@@ -42,13 +42,13 @@ export default function Dasbor() {
             dasbor
           </p>
           <h1 className="mt-4 max-w-2xl text-4xl font-extrabold leading-[1.05] tracking-tight md:text-5xl">
-            Semua tautan, terpantau.
+            Tautanmu, terpantau.
           </h1>
           <p className="mt-4 max-w-xl text-lg leading-relaxed text-muted">
-            Daftar tautan pendek yang pernah dibuat — salin tautannya,
-            tampilkan kode QR-nya, buka statistik kliknya, atau nonaktifkan
-            yang sudah tidak dipakai. Halaman ini hanya untuk pemilik:
-            pengunjung lain hanya melihat formulir masuk.
+            Daftar tautan pendek milik akunmu. Salin tautannya, tampilkan
+            kode QR-nya, buka statistik kliknya, atau nonaktifkan yang
+            sudah tidak dipakai. Akun lain melihat daftarnya sendiri,
+            bukan daftar ini.
           </p>
         </section>
 
@@ -62,7 +62,7 @@ export default function Dasbor() {
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-5 py-6 md:px-8">
           <p className="font-mono text-xs text-muted">
-            pendekin — dasbor pemilik tautan
+            pendekin — dasbor akun
           </p>
           <Link
             href="/"

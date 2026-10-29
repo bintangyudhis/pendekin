@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-/** Tombol keluar: memanggil POST /api/auth/logout lalu me-refresh dasbor. */
+/** Tombol keluar: memanggil POST /api/auth/logout (sesi dihapus di server) lalu me-refresh dasbor. */
 export default function TombolKeluar() {
   const router = useRouter();
   const [sibuk, setSibuk] = useState(false);

@@ -1,12 +1,31 @@
+import { Suspense } from "react";
+import { connection } from "next/server";
 import BilahAtas from "./BilahAtas";
 import PendekinForm from "./PendekinForm";
+import { penggunaDariCookieServer } from "@/lib/auth";
+
+/**
+ * Bagian formulir beranda, sadar sesi: membaca cookie akun lalu
+ * meneruskan email pengguna ke formulir klien. Di dalam <Suspense>
+ * agar cangkang beranda tetap bisa di-prerender (pola yang sama
+ * dengan dasbor).
+ */
+async function SeksiPendekkan() {
+  await connection();
+  const pengguna = await penggunaDariCookieServer();
+  return <PendekinForm penggunaEmail={pengguna?.email ?? null} />;
+}
 
 const REPO_URL = "https://github.com/bintangyudhis/pendekin";
 
 const caraKerja = [
   {
+    kunci: "daftar",
+    isi: "Buat akun gratis dengan email dan kata sandi, lalu masuk. Semua tautan yang kamu buat tercatat atas nama akunmu.",
+  },
+  {
     kunci: "tempel",
-    isi: "Tempel tautan yang panjang. Pendekin membuatkan kode pendek untuknya — bisa juga memakai kode pilihanmu sendiri.",
+    isi: "Tempel tautan yang panjang. Pendekin membuatkan kode pendek untuknya, bisa juga memakai kode pilihanmu sendiri.",
   },
   {
     kunci: "bagikan",
@@ -14,7 +33,7 @@ const caraKerja = [
   },
   {
     kunci: "pantau",
-    isi: "Setiap kunjungan dicatat. Dasbor menampilkan jumlah klik tiap tautan beserta grafik klik harian.",
+    isi: "Setiap kunjungan dicatat. Dasbormu menampilkan jumlah klik tiap tautan beserta grafik klik harian.",
   },
 ];
 
@@ -25,6 +44,7 @@ export default function Home() {
         navigasi={[
           { href: "#cara-kerja", label: "cara-kerja" },
           { href: "#teknis", label: "teknis" },
+          { href: "/masuk", label: "masuk" },
           { href: "/dasbor", label: "dasbor" },
         ]}
       />
@@ -68,9 +88,20 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Pendekkan: formulir langsung, tanpa daftar akun. */}
+        {/* Pendekkan: formulir untuk pengguna yang sudah masuk,
+            panel ajakan daftar/masuk untuk yang belum. */}
         <section aria-label="Pendekkan tautan" className="pb-16 md:pb-20">
-          <PendekinForm />
+          <Suspense
+            fallback={
+              <div className="border border-line md:ml-24">
+                <p className="px-5 py-6 font-mono text-xs text-muted">
+                  Memuat formulir…
+                </p>
+              </div>
+            }
+          >
+            <SeksiPendekkan />
+          </Suspense>
         </section>
 
         {/* Spesimen: contoh hasil, diberi label jelas. */}
@@ -137,9 +168,9 @@ export default function Home() {
             </p>
             <p className="leading-relaxed">
               Kode terbuka di GitHub. Isu rencana fitur, riwayat commit, dan
-              progres pengembangan semuanya tercatat di sana. Dasbornya
-              sendiri hanya untuk pemilik — pengunjung lain tidak bisa
-              mengintip daftar tautan maupun statistiknya.
+              progres pengembangan semuanya tercatat di sana. Setiap akun
+              hanya bisa melihat daftar tautan dan statistik miliknya
+              sendiri.
             </p>
           </div>
         </section>

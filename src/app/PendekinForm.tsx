@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 type Keadaan = "siap" | "mengirim" | "selesai";
 
@@ -11,8 +12,16 @@ type HasilApi =
 /**
  * Formulir pembuatan shortlink di halaman utama. Mengirim ke POST /api/links
  * dan menampilkan hasil tautan pendeknya di bawah formulir.
+ *
+ * Membuat tautan wajib masuk (sejak sistem akun): pengunjung yang
+ * belum masuk melihat panel ajakan daftar/masuk, bukan formulir,
+ * karena server menolak pembuatan tanpa sesi (401).
  */
-export default function PendekinForm() {
+export default function PendekinForm({
+  penggunaEmail,
+}: {
+  penggunaEmail: string | null;
+}) {
   const [url, setUrl] = useState("");
   const [kode, setKode] = useState("");
   const [keadaan, setKeadaan] = useState<Keadaan>("siap");
@@ -76,13 +85,49 @@ export default function PendekinForm() {
     setKeadaan("siap");
   }
 
+  if (!penggunaEmail) {
+    return (
+      <div className="border border-line md:ml-24">
+        <div className="flex items-center justify-between border-b border-line px-5 py-3">
+          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted">
+            pendekkan
+          </p>
+          <p className="font-mono text-[11px] text-muted">perlu akun</p>
+        </div>
+        <div className="space-y-4 px-5 py-6">
+          <p className="max-w-xl leading-relaxed">
+            Buat akun dulu, lalu masuk. Tautan yang kamu buat tercatat
+            atas nama akunmu dan terkumpul di dasbormu, lengkap dengan
+            statistik kliknya.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/daftar"
+              className="bg-accent px-5 py-3 text-sm font-semibold text-paper hover:brightness-95"
+            >
+              daftar akun gratis
+            </Link>
+            <Link
+              href="/masuk"
+              className="border border-ink px-5 py-3 font-mono text-sm hover:bg-ink hover:text-paper"
+            >
+              masuk
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="border border-line md:ml-24">
       <div className="flex items-center justify-between border-b border-line px-5 py-3">
         <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted">
           pendekkan
         </p>
-        <p className="font-mono text-[11px] text-muted">post /api/links</p>
+        <p className="font-mono text-[11px] text-muted">
+          masuk sebagai {penggunaEmail}
+        </p>
       </div>
 
       <form onSubmit={kirim} className="space-y-5 px-5 py-6">
