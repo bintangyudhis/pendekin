@@ -1,26 +1,40 @@
-import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import { apiGalat, apiSukses, bacaJson } from "@/lib/api";
-import { cekLajuMasuk, ipKlien } from "@/lib/rate-limit";
+import { cekLajuAuth, ipKlien } from "@/lib/rate-limit";
 import {
-  NAMA_COOKIE_PEMILIK,
-  UMUR_COOKIE_PEMILIK_DETIK,
-  hashTokenPemilik,
-  tokenPemilikDikonfigurasi,
-  tokenPemilikSah,
-} from "@/lib/pemilik";
+  buatSesi,
+  hashKataSandi,
+  kataSandiCocok,
+  normalisasiEmail,
+  setelCookieSesi,
+} from "@/lib/auth";
 
-type BodyMasuk = { token?: unknown };
+type BodyMasuk = {
+  email?: unknown;
+  kataSandi?: unknown;
+};
 
 /**
- * POST /api/auth/login — masuk sebagai pemilik dasbor.
- * Body: { "token": "<nilai PENDEKIN_OWNER_TOKEN>" }.
+ * Hash umpan untuk jalur "email tidak terdaftar": verifikasi tetap
+ * menjalankan scrypt agar waktu respons tidak membocorkan apakah
+ * sebuah email terdaftar atau tidak. Dibuat sekali per proses.
+ */
+let hashUmpan: Promise<string> | null = null;
+function ambilHashUmpan(): Promise<string> {
+  hashUmpan ??= hashKataSandi("bukan-kata-sandi-siapa-pun");
+  return hashUmpan;
+}
+
+/**
+ * POST /api/auth/login: masuk dengan email + kata sandi akun.
  *
- * Bila token cocok, server menyetel cookie sesi httpOnly berisi HASH token
- * (bukan token mentah). Bila server belum dikonfigurasi token, jawab 503
- * dengan pesan yang jelas — bukan 401 yang menyesatkan.
+ * Pesan galat sengaja sama untuk email tak terdaftar dan kata sandi
+ * salah ("Email atau kata sandi salah"), agar endpoint ini tidak bisa
+ * dipakai menebak email mana saja yang punya akun. Sukses membuat
+ * sesi baru di database dan menyetel cookie httpOnly.
  */
 export async function POST(request: Request) {
-  const laju = cekLajuMasuk(ipKlien(request));
+  const laju = cekLajuAuth(ipKlien(request));
   if (!laju.boleh) {
     const res = apiGalat(
       "terlalu-sering",
@@ -31,37 +45,50 @@ export async function POST(request: Request) {
     return res;
   }
 
-  if (!tokenPemilikDikonfigurasi()) {
-    return apiGalat(
-      "token-belum-dikonfigurasi",
-      "Token pemilik belum dipasang di server. Pasang PENDEKIN_OWNER_TOKEN di environment, lalu deploy ulang.",
-      503,
-    );
-  }
-
-  const hasil = await bacaJson<BodyMasuk>(request, 1024);
+  const hasil = await bacaJson<BodyMasuk>(request, 4 * 1024);
   if ("galat" in hasil) {
     return apiGalat("body-tidak-valid", "Body harus berupa objek JSON.", 400);
   }
-  if (typeof hasil.data.token !== "string" || !hasil.data.token) {
-    return apiGalat("token-wajib", "Isi field `token`.", 422);
+  const { email: emailMentah, kataSandi } = hasil.data;
+  if (typeof emailMentah !== "string" || typeof kataSandi !== "string") {
+    return apiGalat(
+      "kredensial-wajib",
+      "Isi email dan kata sandi.",
+      422,
+    );
   }
 
-  // Perbandingan waktu-konstan ada di tokenPemilikSah; pesan galat dibuat
-  // sama untuk token salah dan token kosong agar tidak membocorkan apa pun.
-  if (!tokenPemilikSah(hasil.data.token)) {
-    return apiGalat("token-salah", "Token tidak cocok. Periksa lagi.", 401);
-  }
+  try {
+    const pengguna = await prisma.pendekinUser.findUnique({
+      where: { email: normalisasiEmail(emailMentah) },
+      select: { id: true, email: true, nama: true, kataSandiHash: true },
+    });
 
-  const res = apiSukses({ masuk: true });
-  res.cookies.set({
-    name: NAMA_COOKIE_PEMILIK,
-    value: hashTokenPemilik(hasil.data.token),
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: UMUR_COOKIE_PEMILIK_DETIK,
-  });
-  return res;
+    const cocok = await kataSandiCocok(
+      kataSandi,
+      pengguna?.kataSandiHash ?? (await ambilHashUmpan()),
+    );
+    if (!pengguna || !cocok) {
+      return apiGalat(
+        "kredensial-salah",
+        "Email atau kata sandi salah.",
+        401,
+      );
+    }
+
+    const res = apiSukses({
+      id: pengguna.id,
+      email: pengguna.email,
+      nama: pengguna.nama,
+    });
+    setelCookieSesi(res, await buatSesi(pengguna.id));
+    return res;
+  } catch (e) {
+    console.error("POST /api/auth/login gagal:", e);
+    return apiGalat(
+      "galat-server",
+      "Terjadi galat di server. Coba lagi sebentar.",
+      500,
+    );
+  }
 }
